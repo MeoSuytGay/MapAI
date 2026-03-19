@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import Register from './pages/Register'
 import ForgotPassword from './pages/ForgotPassword'
 import Explore from './pages/Explore'
+import MapPage from './pages/MapPage'
 import './App.css'
 
 function App() {
@@ -20,7 +21,7 @@ function App() {
       </Route>
 
       {/* Các trang KHÔNG có Header và Footer (ví dụ Bản đồ) */}
-      {/* <Route path="/map" element={<Map />} /> */}
+      <Route path="/map" element={<MapPage />} />
     </Routes>
   )
 }

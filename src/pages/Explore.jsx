@@ -1,269 +1,252 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Search, MapPin, Star, Coffee, Utensils, Camera, TrendingUp, Filter, ArrowRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Search, 
-  MapPin, 
-  Star, 
-  Utensils, 
-  Coffee, 
-  Compass, 
-  TrendingUp, 
-  Navigation2,
-  Sparkles,
-  ChevronRight,
-  Filter,
-  ArrowRight
-} from 'lucide-react';
-import Header from '../components/Header';
-import Footer from '../components/Footer';
 
-// --- MOCK DATA ĐÀ NẴNG ---
-const MOCK_DATA = [
-  { id: 1, name: "Cầu Rồng", type: "Du lịch", lat: 16.0611, lng: 108.2274, rating: 4.9, dist: "1.2km", tags: ["Biểu tượng", "Check-in"], img: "https://images.unsplash.com/photo-1559592442-7e18259f63cc?q=80&w=500&auto=format&fit=crop" },
-  { id: 2, name: "Mì Quảng Bà Mua", type: "Ăn uống", lat: 16.0715, lng: 108.2201, rating: 4.7, dist: "0.8km", tags: ["Đặc sản", "Bình dân"], img: "https://images.unsplash.com/photo-1705307040375-74895788f4e2?q=80&w=500&auto=format&fit=crop" },
-  { id: 3, name: "Bán đảo Sơn Trà", type: "Du lịch", lat: 16.1215, lng: 108.2774, rating: 4.8, dist: "5.5km", tags: ["Thiên nhiên", "View đẹp"], img: "https://images.unsplash.com/photo-1590432805541-69239869689f?q=80&w=500&auto=format&fit=crop" },
-  { id: 4, name: "Wonderlust Cafe", type: "Cafe", lat: 16.0689, lng: 108.2215, rating: 4.6, dist: "1.5km", tags: ["Sống ảo", "Yên tĩnh"], img: "https://images.unsplash.com/photo-1501339817308-44b29ad55bb2?q=80&w=500&auto=format&fit=crop" },
-  { id: 5, name: "Bãi biển Mỹ Khê", type: "Du lịch", lat: 16.0654, lng: 108.2474, rating: 4.9, dist: "2.1km", tags: ["Trending", "Biển"], img: "https://images.unsplash.com/photo-1582234032483-34e857413693?q=80&w=500&auto=format&fit=crop" },
-  { id: 6, name: "Hải sản Năm Đảnh", type: "Ăn uống", lat: 16.0912, lng: 108.2512, rating: 4.5, dist: "3.2km", tags: ["Hải sản", "Giá rẻ"], img: "https://images.unsplash.com/photo-1615141982883-c7ad0e69fd62?q=80&w=500&auto=format&fit=crop" },
-  { id: 7, name: "The Cups Coffee", type: "Cafe", lat: 16.0754, lng: 108.2234, rating: 4.4, dist: "0.5km", tags: ["Làm việc", "View phố"], img: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=500&auto=format&fit=crop" },
-  { id: 8, name: "Chùa Linh Ứng", type: "Du lịch", lat: 16.1001, lng: 108.2778, rating: 4.9, dist: "6.0km", tags: ["Tâm linh", "Vĩ đại"], img: "https://images.unsplash.com/photo-1590432805629-165b4c489b4b?q=80&w=500&auto=format&fit=crop" },
+// ... (locations and categories definitions remain the same)
+const locations = [
+  { id: 1, name: "Cầu Rồng", type: "Du lịch", lat: 16.0611, lng: 108.2274, rating: 4.8, image: "https://images.unsplash.com/photo-1559592442-992ca3993433?q=80&w=1000&auto=format&fit=crop", tags: ["Check-in", "Biểu tượng"], distance: "1.2km", isFeatured: true },
+  { id: 2, name: "Bà Nà Hills", type: "Du lịch", lat: 15.9989, lng: 107.9961, rating: 4.9, image: "https://images.unsplash.com/photo-1582234032482-62323e0ecf79?q=80&w=1000&auto=format&fit=crop", tags: ["Sống ảo", "Vui chơi"], distance: "25km", isFeatured: true },
+  { id: 3, name: "Bánh Xèo Bà Dưỡng", type: "Ăn uống", lat: 16.0520, lng: 108.2163, rating: 4.6, image: "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?q=80&w=1000&auto=format&fit=crop", tags: ["Đặc sản", "Hải sản"], distance: "2.5km", isFeatured: false },
+  { id: 4, name: "The Cup Coffee", type: "Cafe", lat: 16.0680, lng: 108.2230, rating: 4.5, image: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=1000&auto=format&fit=crop", tags: ["Yên tĩnh", "View đẹp"], distance: "0.8km", isFeatured: false },
+  { id: 5, name: "Bãi biển Mỹ Khê", type: "Du lịch", lat: 16.0601, lng: 108.2464, rating: 4.7, image: "https://images.unsplash.com/photo-1506461883276-594a12b11cf3?q=80&w=1000&auto=format&fit=crop", tags: ["Biển", "Gần tôi"], distance: "3.1km", isFeatured: true },
+  { id: 6, name: "Wonderlust Cafe", type: "Cafe", lat: 16.0652, lng: 108.2205, rating: 4.7, image: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=1000&auto=format&fit=crop", tags: ["Sống ảo", "Thiết kế"], distance: "1.5km", isFeatured: false },
+  { id: 7, name: "Hải sản Năm Đảnh", type: "Ăn uống", lat: 16.0963, lng: 108.2562, rating: 4.4, image: "https://images.unsplash.com/photo-1551489186-cf8726f514f8?q=80&w=1000&auto=format&fit=crop", tags: ["Hải sản", "Giá rẻ"], distance: "4.2km", isFeatured: false },
+  { id: 8, name: "Sơn Trà Marina", type: "Cafe", lat: 16.1215, lng: 108.2750, rating: 4.8, image: "https://images.unsplash.com/photo-1445116572660-236099ec97a0?q=80&w=1000&auto=format&fit=crop", tags: ["View đẹp", "Địa Trung Hải"], distance: "7.5km", isFeatured: false },
 ];
 
-const FILTER_TABS = [
-  { id: 'All', label: 'Tất cả', icon: Compass },
-  { id: 'Ăn uống', label: 'Ăn uống', icon: Utensils },
-  { id: 'Cafe', label: 'Cafe', icon: Coffee },
-  { id: 'Du lịch', label: 'Du lịch', icon: Compass },
-  { id: 'Trending', label: 'Trending', icon: TrendingUp },
+const categories = [
+  { id: 'all', name: 'Tất cả', icon: <Filter size={18} /> },
+  { id: 'eat', name: 'Ăn uống', icon: <Utensils size={18} />, type: 'Ăn uống' },
+  { id: 'cafe', name: 'Cafe', icon: <Coffee size={18} />, type: 'Cafe' },
+  { id: 'travel', name: 'Du lịch', icon: <Camera size={18} />, type: 'Du lịch' },
+  { id: 'trending', name: 'Trending', icon: <TrendingUp size={18} />, isTrending: true },
 ];
 
 const Explore = () => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('All');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [isAiSearching, setIsAiSearching] = useState(false);
-  const [suggestions, setSuggestions] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('all');
+  const [isSearching, setIsSearching] = useState(false);
 
-  useEffect(() => {
-    if (searchQuery.length > 1) {
-      setIsAiSearching(true);
-      const timer = setTimeout(() => {
-        const filtered = MOCK_DATA.filter(item => 
-          item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          item.type.toLowerCase().includes(searchQuery.toLowerCase())
-        ).slice(0, 4);
-        setSuggestions(filtered);
-        setIsAiSearching(false);
-      }, 600);
-      return () => clearTimeout(timer);
-    } else {
-      setSuggestions([]);
-      setIsAiSearching(false);
-    }
-  }, [searchQuery]);
+  // Xử lý filter
+  const filteredLocations = useMemo(() => {
+    return locations.filter(loc => {
+      const matchesSearch = loc.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const category = categories.find(c => c.id === activeTab);
+      
+      let matchesTab = true;
+      if (activeTab !== 'all') {
+        if (category?.isTrending) matchesTab = loc.rating >= 4.7;
+        else matchesTab = loc.type === category?.type;
+      }
+      
+      return matchesSearch && matchesTab;
+    });
+  }, [searchTerm, activeTab]);
 
-  const goToMap = (lat, lng) => {
-    navigate(`/map?lat=${lat}&lng=${lng}`);
+  const handleLocationClick = (loc) => {
+    navigate(`/map?lat=${loc.lat}&lng=${loc.lng}`);
   };
 
-  const filteredItems = activeTab === 'All' 
-    ? MOCK_DATA 
-    : activeTab === 'Trending' 
-      ? MOCK_DATA.filter(i => i.tags.includes('Trending'))
-      : MOCK_DATA.filter(i => i.type === activeTab);
+  const quickSuggestions = ["Ăn gì", "Cafe đẹp", "Check-in", "Gần tôi"];
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 selection:bg-blue-500/30 overflow-x-hidden">
-      <Header />
-
-      {/* Hero Background Decor */}
-      <div className="fixed inset-0 pointer-events-none overflow-hidden">
-        <div className="absolute top-0 right-0 w-[40%] h-[40%] bg-blue-600/5 blur-[100px] rounded-full"></div>
-        <div className="absolute bottom-0 left-0 w-[40%] h-[40%] bg-indigo-600/5 blur-[100px] rounded-full"></div>
+    <div className="bg-slate-950 text-white font-sans selection:bg-indigo-500/30 flex flex-col">
+      
+      {/* Background Decor */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-600/10 blur-[120px] rounded-full"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 blur-[120px] rounded-full"></div>
       </div>
 
-      <div className="max-w-6xl mx-auto px-6 pt-28 pb-20 relative z-10">
-        
-        {/* --- 1. SEARCH BAR --- */}
-        <section className="flex flex-col items-center mb-14">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
+      <div className="relative z-10 max-w-7xl mx-auto px-4 pt-12 pb-12 md:pt-16 md:pb-20 flex-grow w-full">
+        {/* Search Header Section */}
+        <section className="flex flex-col items-center mb-12">
+          <motion.h1 
+            initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="w-full max-w-2xl relative"
+            className="text-4xl md:text-5xl font-bold mb-8 bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent text-center"
           >
+            Khám phá Đà Nẵng
+          </motion.h1>
+
+          <div className="w-full max-w-2xl relative">
             <div className="relative group">
-              <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-500 transition-colors w-5 h-5" />
+              <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
+                <Search className="text-slate-400 group-focus-within:text-indigo-400 transition-colors" size={20} />
+              </div>
               <input 
                 type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Bạn muốn đi đâu ở Đà Nẵng?"
-                className="w-full bg-slate-900/40 border border-white/10 rounded-2xl pl-14 pr-6 py-4 outline-none focus:border-blue-500/40 focus:ring-4 focus:ring-blue-500/5 transition-all text-[13px] font-bold shadow-2xl backdrop-blur-xl placeholder:text-slate-600"
+                className="w-full bg-slate-900/50 backdrop-blur-xl border border-slate-800 rounded-3xl py-4 pl-14 pr-6 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all text-lg"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setIsSearching(e.target.value.length > 0);
+                }}
               />
-              {isAiSearching && (
-                <div className="absolute right-5 top-1/2 -translate-y-1/2">
-                  <div className="w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin"></div>
+              {isSearching && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-slate-900/90 backdrop-blur-2xl border border-slate-800 rounded-2xl overflow-hidden shadow-2xl z-50">
+                  <div className="p-2">
+                    <div className="px-4 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">AI Gợi ý cho bạn</div>
+                    {filteredLocations.slice(0, 4).map(loc => (
+                      <button 
+                        key={loc.id}
+                        onClick={() => handleLocationClick(loc)}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-slate-800/50 transition-colors text-left"
+                      >
+                        <MapPin size={16} className="text-indigo-400" />
+                        <div>
+                          <div className="text-sm font-medium">{loc.name}</div>
+                          <div className="text-xs text-slate-500">{loc.type} • {loc.distance}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Suggestions Dropdown */}
-            <AnimatePresence>
-              {suggestions.length > 0 && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  className="absolute top-full mt-2 w-full bg-slate-900/90 backdrop-blur-2xl border border-white/10 rounded-2xl p-3 shadow-2xl z-50 overflow-hidden"
-                >
-                  <div className="flex items-center gap-2 mb-2 px-2">
-                    <Sparkles size={12} className="text-blue-400" />
-                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-500">AI Suggested</span>
-                  </div>
-                  <div className="space-y-1">
-                    {suggestions.map(item => (
-                      <button 
-                        key={item.id}
-                        onClick={() => goToMap(item.lat, item.lng)}
-                        className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-white/5 transition-colors text-left group"
-                      >
-                        <div className="flex items-center gap-3">
-                          <MapPin size={14} className="text-blue-500" />
-                          <div>
-                            <p className="text-[12px] font-black text-white">{item.name}</p>
-                            <p className="text-[10px] text-slate-500">{item.type} • {item.dist}</p>
-                          </div>
-                        </div>
-                        <ChevronRight size={14} className="text-slate-700 group-hover:text-blue-500" />
-                      </button>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Quick Chips */}
-            <div className="flex flex-wrap justify-center gap-2.5 mt-6">
-              {["Ăn gì", "Cafe đẹp", "Check-in", "Gần tôi"].map(chip => (
+            <div className="flex flex-wrap justify-center gap-2 mt-4">
+              {quickSuggestions.map(tag => (
                 <button 
-                  key={chip}
-                  onClick={() => setSearchQuery(chip)}
-                  className="px-4 py-1.5 bg-white/5 border border-white/5 rounded-full text-[10px] font-bold text-slate-400 hover:text-white hover:bg-blue-600/20 transition-all"
+                  key={tag}
+                  onClick={() => setSearchTerm(tag)}
+                  className="px-4 py-1.5 rounded-full bg-slate-900/50 border border-slate-800 text-sm text-slate-400 hover:text-white hover:border-indigo-500/50 transition-all cursor-pointer"
                 >
-                  {chip}
+                  {tag}
                 </button>
               ))}
             </div>
-          </motion.div>
+          </div>
         </section>
 
-        {/* --- 2. FILTER TABS --- */}
-        <section className="mb-14 flex justify-center overflow-x-auto no-scrollbar pb-2">
-          <div className="flex items-center gap-3">
-            {FILTER_TABS.map((tab) => (
+        {/* Categories Tabs */}
+        <section className="mb-12 overflow-x-auto no-scrollbar">
+          <div className="flex gap-4 min-w-max pb-2">
+            {categories.map(cat => (
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[11px] font-black transition-all border ${
-                  activeTab === tab.id 
-                    ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-600/20' 
-                    : 'bg-white/5 border-white/5 text-slate-500 hover:text-slate-300'
+                key={cat.id}
+                onClick={() => setActiveTab(cat.id)}
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-2xl transition-all ${
+                  activeTab === cat.id 
+                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
+                    : 'bg-slate-900 border border-slate-800 text-slate-400 hover:bg-slate-800'
                 }`}
               >
-                <tab.icon size={13} />
-                {tab.label}
+                {cat.icon}
+                <span className="font-medium">{cat.name}</span>
               </button>
             ))}
           </div>
         </section>
 
-        {/* --- 3. SECTIONS --- */}
-        
-        {/* A. ĐỊA ĐIỂM NỔI BẬT (Carousel) */}
-        <section className="mb-16">
-          <div className="flex items-center justify-between mb-6 px-1">
-            <div className="flex items-center gap-2">
-              <Sparkles size={16} className="text-blue-500" />
-              <h2 className="text-lg font-black text-white tracking-tight uppercase">Địa điểm nổi bật</h2>
+        {/* Featured Section (Carousel) */}
+        {activeTab === 'all' && !searchTerm && (
+          <section className="mb-16">
+            <div className="flex justify-between items-end mb-6">
+              <h2 className="text-2xl font-bold flex items-center gap-2">
+                <Star className="text-yellow-500 fill-yellow-500" size={24} />
+                Địa điểm nổi bật
+              </h2>
+              <button className="text-indigo-400 text-sm font-medium flex items-center gap-1 hover:text-indigo-300 transition-colors">
+                Xem tất cả <ArrowRight size={14} />
+              </button>
             </div>
-            <button className="text-[10px] font-black text-blue-500 uppercase tracking-widest flex items-center gap-1 group">
-              Xem tất cả <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
-            </button>
-          </div>
-          <div className="flex gap-5 overflow-x-auto no-scrollbar pb-4 snap-x">
-            {MOCK_DATA.filter(i => i.rating >= 4.8).map(item => (
-              <motion.div 
-                key={item.id}
-                whileHover={{ y: -5 }}
-                onClick={() => goToMap(item.lat, item.lng)}
-                className="min-w-[260px] md:min-w-[300px] bg-slate-900/40 border border-white/5 rounded-[2rem] overflow-hidden snap-start cursor-pointer shadow-xl group"
-              >
-                <div className="h-40 relative">
-                  <img src={item.img} alt={item.name} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent opacity-60"></div>
-                  <div className="absolute top-3 right-3 px-2 py-1 bg-slate-950/60 backdrop-blur-md rounded-lg flex items-center gap-1 border border-white/10">
-                    <Star size={10} className="text-yellow-500 fill-yellow-500" />
-                    <span className="text-[10px] font-black text-white">{item.rating}</span>
-                  </div>
-                </div>
-                <div className="p-5">
-                  <h3 className="text-sm font-black text-white mb-1">{item.name}</h3>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Navigation2 size={10} className="text-blue-500" />
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{item.dist} • {item.type}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    {item.tags.map(tag => (
-                      <span key={tag} className="text-[8px] font-black px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 uppercase border border-blue-500/20">{tag}</span>
-                    ))}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </section>
-
-        {/* B. GRID SECTIONS */}
-        <section className="mb-10">
-          <div className="flex items-center gap-2 mb-8 px-1">
-            <Utensils size={16} className="text-indigo-500" />
-            <h2 className="text-lg font-black text-white tracking-tight uppercase">Ẩm thực & Cafe</h2>
-          </div>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-5">
-            {MOCK_DATA.filter(i => i.type === 'Ăn uống' || i.type === 'Cafe').map(item => (
-              <motion.div 
-                key={item.id}
-                whileHover={{ y: -4 }}
-                onClick={() => goToMap(item.lat, item.lng)}
-                className="bg-slate-900/40 border border-white/5 rounded-[1.5rem] overflow-hidden cursor-pointer group shadow-lg"
-              >
-                <div className="h-28 relative overflow-hidden">
-                  <img src={item.img} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                  <div className="absolute top-2 left-2 px-2 py-0.5 bg-indigo-600 rounded-lg text-[8px] font-black uppercase tracking-widest text-white">
-                    {item.type}
-                  </div>
-                </div>
-                <div className="p-4">
-                  <h3 className="text-[12px] font-black text-white mb-1 group-hover:text-blue-400 transition-colors line-clamp-1">{item.name}</h3>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[9px] font-bold text-slate-500 italic">{item.dist}</span>
-                    <div className="flex items-center gap-1">
-                      <Star size={9} className="text-yellow-500 fill-yellow-500" />
-                      <span className="text-[10px] font-black text-white">{item.rating}</span>
+            <div className="flex gap-6 overflow-x-auto pb-6 snap-x no-scrollbar">
+              {locations.filter(l => l.isFeatured).map(loc => (
+                <motion.div
+                  key={loc.id}
+                  whileHover={{ y: -5 }}
+                  onClick={() => handleLocationClick(loc)}
+                  className="flex-shrink-0 w-[300px] md:w-[380px] snap-start cursor-pointer group"
+                >
+                  <div className="relative aspect-[16/10] rounded-3xl overflow-hidden mb-4">
+                    <img src={loc.image} alt={loc.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                    <div className="absolute top-4 right-4 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-1 border border-white/10">
+                      <Star size={14} className="text-yellow-500 fill-yellow-500" />
+                      <span className="text-sm font-bold">{loc.rating}</span>
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
+                    <div className="absolute bottom-4 left-4">
+                      <div className="text-xs font-semibold text-indigo-300 uppercase mb-1 tracking-wider">{loc.type}</div>
+                      <h3 className="text-xl font-bold">{loc.name}</h3>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </section>
+                </motion.div>
+              ))}
+            </div>
+          </section>
+        )}
 
+        {/* Results Grid */}
+        <section>
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-2xl font-bold">
+              {activeTab === 'all' ? 'Tất cả địa điểm' : categories.find(c => c.id === activeTab)?.name}
+            </h2>
+            <span className="text-slate-500 text-sm font-medium">{filteredLocations.length} địa điểm được tìm thấy</span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            <AnimatePresence mode='popLayout'>
+              {filteredLocations.map((loc) => (
+                <motion.div
+                  layout
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ duration: 0.3 }}
+                  key={loc.id}
+                  onClick={() => handleLocationClick(loc)}
+                  className="group bg-slate-900/40 border border-slate-800/50 rounded-[2rem] overflow-hidden hover:bg-slate-900/60 hover:border-indigo-500/30 transition-all cursor-pointer flex flex-col"
+                >
+                  <div className="relative aspect-video overflow-hidden">
+                    <img src={loc.image} alt={loc.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                    <div className="absolute bottom-3 right-3 bg-slate-950/80 backdrop-blur-sm px-2.5 py-1 rounded-lg text-xs font-bold border border-white/10">
+                      {loc.distance}
+                    </div>
+                  </div>
+                  <div className="p-6 flex-grow flex flex-col">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h3 className="text-lg font-bold group-hover:text-indigo-400 transition-colors">{loc.name}</h3>
+                        <p className="text-sm text-slate-500 flex items-center gap-1 mt-1">
+                          <MapPin size={12} /> {loc.type}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 px-2 py-1 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+                        <Star size={14} className="text-yellow-500 fill-yellow-500" />
+                        <span className="text-sm font-bold text-yellow-500">{loc.rating}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-2 mt-auto">
+                      {loc.tags.map(tag => (
+                        <span key={tag} className="px-2.5 py-1 bg-slate-800/50 rounded-lg text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+
+          {filteredLocations.length === 0 && (
+            <div className="text-center py-20">
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-slate-900 border border-slate-800 mb-4">
+                <Search size={32} className="text-slate-600" />
+              </div>
+              <h3 className="text-xl font-bold mb-2">Không tìm thấy kết quả</h3>
+              <p className="text-slate-500">Thử tìm kiếm với từ khóa khác nhé!</p>
+            </div>
+          )}
+        </section>
       </div>
 
-      <Footer />
-
-      {/* Custom Scrollbar Styles */}
       <style dangerouslySetInnerHTML={{ __html: `
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

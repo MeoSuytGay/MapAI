@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { 
   MessageSquare, 
-  PlayCircle, 
+  Compass, 
   Send, 
   MapPin, 
   Cpu, 
@@ -12,8 +12,6 @@ import {
   Zap,
   Layers
 } from 'lucide-react'
-import Header from '../components/Header'
-import Footer from '../components/Footer'
 
 const fadeIn = {
   initial: { opacity: 0, y: 20 },
@@ -33,11 +31,10 @@ function Home() {
   const navigate = useNavigate()
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 overflow-x-hidden selection:bg-blue-500/30">
-      <Header />
+    <div className="bg-slate-950 text-slate-200 overflow-x-hidden selection:bg-blue-500/30">
       
       {/* Hero Section */}
-      <main className="relative pt-32 pb-20 px-6 md:px-12 flex flex-col items-center">
+      <main className="relative pt-16 pb-20 px-6 md:px-12 flex flex-col items-center">
         {/* Animated Background Gradients */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-[1000px] pointer-events-none overflow-hidden">
           <motion.div 
@@ -112,10 +109,11 @@ function Home() {
             <motion.button 
               whileHover={{ scale: 1.05, background: "rgba(255,255,255,0.1)" }}
               whileTap={{ scale: 0.95 }}
+              onClick={() => navigate("/explore")}
               className="w-full sm:w-auto px-12 py-5 bg-white/5 text-white font-black rounded-2xl border border-white/10 backdrop-blur-md transition-all flex items-center justify-center gap-3 group"
             >
-              <span>Xem Demo</span>
-              <PlayCircle className="w-5 h-5 group-hover:text-blue-400 transition-colors" />
+              <span>Khám phá ngay</span>
+              <Compass className="w-5 h-5 group-hover:text-blue-400 transition-colors" />
             </motion.button>
           </motion.div>
 
@@ -128,7 +126,7 @@ function Home() {
           >
             <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 via-indigo-500 to-purple-600 rounded-[3rem] blur opacity-20 group-hover:opacity-40 transition-opacity duration-1000"></div>
             <div className="relative bg-slate-900/90 backdrop-blur-3xl border border-white/10 rounded-[3rem] overflow-hidden shadow-[0_0_100px_rgba(0,0,0,0.5)]">
-              {/* Header */}
+              {/* Header Preview */}
               <div className="px-10 py-5 border-b border-white/5 flex justify-between items-center bg-white/5">
                 <div className="flex gap-2.5">
                   <div className="w-3.5 h-3.5 rounded-full bg-rose-500/30 border border-rose-500/50"></div>
@@ -201,7 +199,7 @@ function Home() {
                    />
                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-slate-950/40 opacity-80"></div>
                    
-                   {/* Realistic Pulsing Markers */}
+                   {/* Pulsing Markers */}
                    <div className="absolute top-[30%] left-[40%]">
                       <div className="relative flex items-center justify-center">
                         <div className="absolute w-12 h-12 bg-blue-500/30 rounded-full animate-ping"></div>
@@ -289,7 +287,7 @@ function Home() {
             >
               <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
               <div className="relative z-10">
-                <div className={`w-20 h-20 bg-${feature.color}-600/10 rounded-[2rem] flex items-center justify-center mb-10 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-inner`}>
+                <div className={`w-20 h-20 bg-slate-800 rounded-[2rem] flex items-center justify-center mb-10 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-inner`}>
                   {feature.icon}
                 </div>
                 <h3 className="text-3xl font-black text-white mb-6 tracking-tight">{feature.title}</h3>
@@ -331,7 +329,6 @@ function Home() {
         </motion.div>
       </section>
 
-      <Footer />
     </div>
   )
 }

@@ -5,7 +5,6 @@ import {
   Mail, 
   Lock, 
   ArrowRight, 
-  Map as MapIcon, 
   Eye, 
   EyeOff, 
   AlertCircle,
@@ -39,32 +38,19 @@ export default function Login() {
   };
 
   return (
-    <div className="font-body bg-slate-950 text-slate-200 min-h-screen flex flex-col selection:bg-blue-500/30 overflow-hidden">
+    <div className="font-body bg-slate-950 text-slate-200 min-h-full flex flex-col selection:bg-blue-500/30 overflow-hidden">
+      
       {/* Dynamic Background */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-15%] left-[-10%] w-[45%] h-[45%] bg-blue-600/5 rounded-full blur-[100px]"></div>
         <div className="absolute bottom-[-15%] right-[-10%] w-[45%] h-[45%] bg-indigo-600/5 rounded-full blur-[100px]"></div>
       </div>
 
-      {/* Ultra Compact Header */}
-      <header className="fixed top-0 w-full z-50 px-5 h-14 flex justify-between items-center bg-slate-950/20 backdrop-blur-sm border-b border-white/5">
-        <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/")}>
-          <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-600/20">
-            <MapIcon className="text-white w-4 h-4" />
-          </div>
-          <span className="text-lg font-black text-white tracking-tighter">MapAI</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
-          <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Secure Server</span>
-        </div>
-      </header>
-
-      <main className="flex-grow flex items-center justify-center pt-14 pb-10 px-4 relative z-10">
+      <main className="flex-grow flex items-center justify-center pt-12 pb-12 px-4 relative z-10">
         <motion.div 
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className="w-full max-w-[430px]" // Reduced width significantly
+          className="w-full max-w-[430px]"
         >
           <div className="text-center mb-6">
             <h1 className="text-2xl font-black text-white mb-1.5 tracking-tight">Xác thực quyền truy cập</h1>
@@ -196,13 +182,6 @@ export default function Login() {
           </motion.div>
         </motion.div>
       </main>
-
-      {/* Mini Footer */}
-      <footer className="w-full py-6 text-center px-8 relative z-10">
-        <p className="text-slate-700 text-[8px] font-black uppercase tracking-[0.4em]">
-          End-to-End Encrypted Node • MapAI Technologies
-        </p>
-      </footer>
     </div>
   );
 }

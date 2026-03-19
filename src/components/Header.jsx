@@ -47,19 +47,19 @@ const Header = () => {
         {/* Desktop Nav */}
         <nav className="hidden lg:flex items-center gap-6">
           {[
-            { name: 'Khám phá', icon: Compass },
-            { name: 'Tính năng', icon: Zap },
-            { name: 'Bản đồ', icon: MapIcon },
+            { name: 'Khám phá', icon: Compass, path: '/explore' },
+            { name: 'Tính năng', icon: Zap, path: '#' },
+            { name: 'Bản đồ', icon: MapIcon, path: '/map' },
           ].map((item) => (
-            <a 
+            <button 
               key={item.name}
-              href="#" 
-              className="flex items-center gap-2 text-[12px] font-bold text-slate-400 hover:text-white transition-all group"
+              onClick={() => item.path !== '#' && navigate(item.path)}
+              className="flex items-center gap-2 text-[12px] font-bold text-slate-400 hover:text-white transition-all group cursor-pointer bg-transparent border-none outline-none"
             >
               <item.icon size={14} className="group-hover:text-blue-500 transition-colors" />
               {item.name}
               <ChevronDown size={10} className="opacity-30 group-hover:opacity-100 transition-opacity" />
-            </a>
+            </button>
           ))}
         </nav>
       </div>

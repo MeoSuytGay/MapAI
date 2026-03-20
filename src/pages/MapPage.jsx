@@ -3,6 +3,7 @@ import { ArrowLeft, Send, User, Sparkles, Search, ChevronRight, ChevronLeft, Mes
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import MapLibreView from '../components/MapLibreView';
+import SearchBar from '../components/SearchBar';
 
 const MapPage = () => {
   const navigate = useNavigate();
@@ -61,14 +62,18 @@ const MapPage = () => {
         transition={{ type: 'spring', damping: 20, stiffness: 100 }}
         className="relative h-full bg-[#121212] overflow-hidden"
       >
-        <motion.button 
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-          onClick={() => navigate('/')}
-          className="absolute top-6 left-6 z-10 p-3 bg-white/10 backdrop-blur-md rounded-full border border-white/10 hover:bg-white/20 transition-all shadow-xl group"
-        >
-          <ArrowLeft className="w-6 h-6 text-white group-hover:-translate-x-1 transition-transform" />
-        </motion.button>
+        <div className="absolute top-6 left-6 z-10 flex items-center gap-4">
+          <motion.button 
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={() => navigate('/')}
+            className="p-3 bg-white/10 backdrop-blur-md rounded-full border border-white/10 hover:bg-white/20 transition-all shadow-xl group"
+          >
+            <ArrowLeft className="w-6 h-6 text-white group-hover:-translate-x-1 transition-transform" />
+          </motion.button>
+          
+          <SearchBar />
+        </div>
 
         <MapLibreView />
         

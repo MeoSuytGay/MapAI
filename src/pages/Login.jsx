@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "../hooks/useAuth";
 import { 
   Mail, 
   Lock, 
@@ -19,22 +20,28 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [rememberMe, setRememberMe] = useState(false);
+  
+  const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const handleSubmit = (e) => {
+  // Get the page user was trying to access before being redirected to login
+  const from = location.state?.from?.pathname || "/";
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
 
-    setTimeout(() => {
-      if (email === "admin" && password === "admin") {
-        setIsLoading(false);
-        navigate("/");
-      } else {
-        setIsLoading(false);
-        setError("Thông tin xác thực không chính xác.");
-      }
-    }, 1000);
+    try {
+      await login(email, password);
+      // Redirect to the intended page or home
+      navigate(from, { replace: true });
+    } catch (err) {
+      setError(err.message || "Đã có lỗi xảy ra khi đăng nhập.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

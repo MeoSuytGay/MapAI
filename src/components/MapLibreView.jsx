@@ -1,8 +1,11 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { Layers, Box, RotateCw, RotateCcw, ChevronUp, ChevronDown, Compass } from 'lucide-react';
+import { Layers, Box, RotateCw, RotateCcw, ChevronUp, ChevronDown, Compass, X, Star, MapPin, Phone, Globe, Clock, Image as ImageIcon, ExternalLink, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { fetchPlaceDetails } from '../services/serpApi';
+import PlaceDetailPanel from './PlaceDetailPanel';
 
 const CATEGORY_COLORS = {
   'food': '#ff9f43',
@@ -24,9 +27,40 @@ const MapLibreView = () => {
   const [is3D, setIs3D] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [bearing, setBearing] = useState(0);
+  const [mapError, setMapError] = useState(null);
+  
+  // State for place details
+  const [selectedPlace, setSelectedPlace] = useState(null);
+  const [isDetailLoading, setIsDetailLoading] = useState(false);
 
   const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY;
-  const styleUrl = `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`;
+  
+  // Fallback to a free style if MapTiler key is missing or invalid
+  const styleUrl = (MAPTILER_KEY && MAPTILER_KEY !== 'YOUR_MAPTILER_KEY_HERE')
+    ? `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`
+    : 'https://demotiles.maplibre.org/style.json'; // Open source basic style
+
+  const handleShowDetails = useCallback(async (name, coordinates) => {
+    setIsDetailLoading(true);
+    try {
+      const details = await fetchPlaceDetails(name, coordinates);
+      setSelectedPlace(details);
+    } catch (error) {
+      console.error("Failed to load details", error);
+    } finally {
+      setIsDetailLoading(false);
+    }
+  }, []);
+
+  // Expose function to window for popup button access
+  useEffect(() => {
+    window.showPlaceDetails = (name, lng, lat) => {
+      handleShowDetails(name, [lng, lat]);
+    };
+    return () => {
+      delete window.showPlaceDetails;
+    };
+  }, [handleShowDetails]);
 
   const updateMarkers = useCallback(() => {
     if (!map.current || !map.current.isStyleLoaded()) return;
@@ -109,111 +143,132 @@ const MapLibreView = () => {
   }, [isLoaded, searchParams]);
 
   useEffect(() => {
-    if (!MAPTILER_KEY || map.current) return;
+    if (map.current) return;
 
-    const mapInstance = new maplibregl.Map({
-      container: mapContainer.current,
-      style: styleUrl,
-      center: [108.22, 16.06],
-      zoom: 15,
-      pitch: 0,
-      antialias: true,
-      doubleClickZoom: false,
-      dragRotate: true
-    });
-
-    map.current = mapInstance;
-
-    mapInstance.on('load', () => {
-      setIsLoaded(true);
-      
-      mapInstance.addSource('maptiler-terrain', {
-        type: 'raster-dem',
-        url: `https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=${MAPTILER_KEY}`,
-        tileSize: 256
+    try {
+      const mapInstance = new maplibregl.Map({
+        container: mapContainer.current,
+        style: styleUrl,
+        center: [108.22, 16.06],
+        zoom: 15,
+        pitch: 0,
+        antialias: true,
+        doubleClickZoom: false,
+        dragRotate: true
       });
 
-      if (!mapInstance.getLayer('3d-buildings')) {
-        mapInstance.addLayer({
-          'id': '3d-buildings',
-          'source': 'openmaptiles',
-          'source-layer': 'building',
-          'type': 'fill-extrusion',
-          'minzoom': 14,
-          'paint': {
-            'fill-extrusion-color': '#e2e8f0',
-            'fill-extrusion-height': ['coalesce', ['get', 'render_height'], ['get', 'height'], 20],
-            'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0],
-            'fill-extrusion-opacity': 0.5
+      map.current = mapInstance;
+
+      mapInstance.on('load', () => {
+        setIsLoaded(true);
+        setMapError(null);
+        
+        // Only add terrain if key is valid
+        if (MAPTILER_KEY && MAPTILER_KEY !== 'YOUR_MAPTILER_KEY_HERE') {
+          mapInstance.addSource('maptiler-terrain', {
+            type: 'raster-dem',
+            url: `https://api.maptiler.com/tiles/terrain-rgb-v2/tiles.json?key=${MAPTILER_KEY}`,
+            tileSize: 256
+          });
+
+          if (!mapInstance.getLayer('3d-buildings')) {
+            mapInstance.addLayer({
+              'id': '3d-buildings',
+              'source': 'openmaptiles',
+              'source-layer': 'building',
+              'type': 'fill-extrusion',
+              'minzoom': 14,
+              'paint': {
+                'fill-extrusion-color': '#e2e8f0',
+                'fill-extrusion-height': ['coalesce', ['get', 'render_height'], ['get', 'height'], 20],
+                'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0],
+                'fill-extrusion-opacity': 0.5
+              }
+            });
           }
-        });
-      }
-      updateMarkers();
-    });
+        }
+        updateMarkers();
+      });
 
-    mapInstance.on('click', (e) => {
-      const width = 15; 
-      const height = 15;
-      const bbox = [
-        [e.point.x - width, e.point.y - height],
-        [e.point.x + width, e.point.y + height]
-      ];
+      mapInstance.on('error', (e) => {
+        console.warn('MapLibre error (often related to API keys):', e);
+        if (e.error && e.error.status === 403) {
+          setMapError("API Key MapTiler không hợp lệ hoặc đã hết hạn (403).");
+        }
+      });
 
-      const features = mapInstance.queryRenderedFeatures(bbox);
-      const poi = features.find(f => f.layer.type === 'symbol' && f.properties && f.properties.name)
-               || features.find(f => f.properties && f.properties.name);
+      mapInstance.on('click', (e) => {
+        const width = 15; 
+        const height = 15;
+        const bbox = [
+          [e.point.x - width, e.point.y - height],
+          [e.point.x + width, e.point.y + height]
+        ];
 
-      if (!poi) return;
+        const features = mapInstance.queryRenderedFeatures(bbox);
+        const poi = features.find(f => f.layer.type === 'symbol' && f.properties && f.properties.name)
+                 || features.find(f => f.properties && f.properties.name);
 
-      const { properties } = poi;
-      const name = properties.name || properties.name_en;
-      const category = properties.class || properties.subclass || 'Địa điểm';
+        if (!poi) return;
 
-      const popupContent = `
-        <div class="p-4 bg-slate-900 text-white rounded-2xl border border-white/10 shadow-2xl min-w-[200px] animate-in fade-in zoom-in duration-200">
-          <div class="flex items-center gap-2 mb-2">
-            <div class="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
-            <span class="text-[9px] font-black uppercase tracking-widest text-blue-400">${category}</span>
+        const { properties } = poi;
+        const name = properties.name || properties.name_en;
+        const category = properties.class || properties.subclass || 'Địa điểm';
+
+        const popupContent = `
+          <div class="p-4 bg-slate-900 text-white rounded-2xl border border-white/10 shadow-2xl min-w-[200px] animate-in fade-in zoom-in duration-200">
+            <div class="flex items-center gap-2 mb-2">
+              <div class="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]"></div>
+              <span class="text-[9px] font-black uppercase tracking-widest text-blue-400">${category}</span>
+            </div>
+            <h3 class="text-sm font-bold mb-3 leading-tight">${name}</h3>
+            <button 
+              onclick="window.showPlaceDetails('${name}', ${e.lngLat.lng}, ${e.lngLat.lat})"
+              class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black rounded-lg transition-all active:scale-95 uppercase"
+            >
+              XEM CHI TIẾT
+            </button>
           </div>
-          <h3 class="text-sm font-bold mb-3 leading-tight">${name}</h3>
-          <button class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black rounded-lg transition-all active:scale-95 uppercase">
-            XEM CHI TIẾT
-          </button>
-        </div>
-      `;
+        `;
 
-      new maplibregl.Popup({ 
-        offset: [0, -10], 
-        closeButton: false,
-        maxWidth: '300px'
-      })
-        .setLngLat(e.lngLat)
-        .setHTML(popupContent)
-        .addTo(mapInstance);
-    });
+        new maplibregl.Popup({ 
+          offset: [0, -10], 
+          closeButton: false,
+          maxWidth: '300px'
+        })
+          .setLngLat(e.lngLat)
+          .setHTML(popupContent)
+          .addTo(mapInstance);
+      });
 
-    mapInstance.on('mousemove', (e) => {
-      const p = 8;
-      const features = mapInstance.queryRenderedFeatures([
-        [e.point.x - p, e.point.y - p],
-        [e.point.x + p, e.point.y + p]
-      ]);
-      const hasPoi = features.some(f => f.properties && f.properties.name);
-      mapInstance.getCanvas().style.cursor = hasPoi ? 'pointer' : '';
-    });
+      mapInstance.on('mousemove', (e) => {
+        const p = 8;
+        const features = mapInstance.queryRenderedFeatures([
+          [e.point.x - p, e.point.y - p],
+          [e.point.x + p, e.point.y + p]
+        ]);
+        const hasPoi = features.some(f => f.properties && f.properties.name);
+        mapInstance.getCanvas().style.cursor = hasPoi ? 'pointer' : '';
+      });
 
-    // Chỉ cập nhật state bearing khi thực sự thay đổi để tránh vòng lặp render
-    mapInstance.on('rotate', () => {
-      const newBearing = mapInstance.getBearing();
-      setBearing(newBearing);
-    });
+      mapInstance.on('rotate', () => {
+        const newBearing = mapInstance.getBearing();
+        setBearing(newBearing);
+      });
 
-    mapInstance.on('moveend', updateMarkers);
-    mapInstance.on('zoomend', updateMarkers);
+      mapInstance.on('moveend', updateMarkers);
+      mapInstance.on('zoomend', updateMarkers);
+
+    } catch (err) {
+      console.error("Map initialization failed:", err);
+      setMapError("Không thể khởi tạo bản đồ. Vui lòng kiểm tra kết nối mạng hoặc API Key.");
+    }
 
     return () => {
-      mapInstance.remove();
-      map.current = null;
+      if (map.current) {
+        map.current.remove();
+        map.current = null;
+      }
     };
   }, [MAPTILER_KEY, styleUrl, updateMarkers]);
 
@@ -237,11 +292,38 @@ const MapLibreView = () => {
   };
 
   return (
-    <div className="relative w-full h-full bg-[#f8f9fa]">
+    <div className="relative w-full h-full bg-[#f8f9fa] overflow-hidden">
       <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
 
-      {/* View Toggle */}
-      <div className="absolute bottom-10 left-10 z-20 flex flex-col gap-3">
+      {/* Place Detail Panel (Right Side) */}
+      <AnimatePresence>
+        {selectedPlace && (
+          <PlaceDetailPanel 
+            place={selectedPlace} 
+            onClose={() => setSelectedPlace(null)} 
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Loading Details Spinner */}
+      <AnimatePresence>
+        {isDetailLoading && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 bg-slate-950/20 backdrop-blur-sm z-[110] flex items-center justify-center"
+          >
+            <div className="bg-slate-900/80 p-8 rounded-3xl border border-white/10 flex flex-col items-center gap-4">
+              <div className="w-10 h-10 border-4 border-blue-500/20 border-t-blue-500 rounded-full animate-spin"></div>
+              <p className="text-[10px] font-black text-white uppercase tracking-widest">Đang tải dữ liệu thực tế...</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* View Toggle (Now on the Right) */}
+      <div className="absolute bottom-10 right-10 z-20 flex flex-col gap-3">
         <button
           onClick={toggle3D}
           className={`flex items-center gap-4 px-8 py-4 rounded-[2rem] backdrop-blur-2xl border transition-all shadow-2xl font-black text-[10px] uppercase tracking-[0.2em] ${
@@ -253,8 +335,8 @@ const MapLibreView = () => {
         </button>
       </div>
 
-      {/* Camera Controls */}
-      <div className="absolute bottom-10 right-10 z-20 flex flex-col gap-2">
+      {/* Camera Controls (Now on the Left) */}
+      <div className="absolute bottom-10 left-10 z-20 flex flex-col gap-2">
         <div className="flex flex-col bg-slate-950/80 backdrop-blur-xl rounded-[2rem] border border-white/10 p-1.5 shadow-2xl">
           <button onClick={() => pitchMap(15)} className="p-3 text-white hover:bg-white/10 rounded-2xl transition-colors"><ChevronUp size={20} /></button>
           <button onClick={() => rotateMap(-30)} className="p-3 text-white hover:bg-white/10 rounded-2xl transition-colors"><RotateCcw size={20} /></button>
@@ -266,9 +348,25 @@ const MapLibreView = () => {
         </div>
       </div>
 
-      {!isLoaded && (
+      {!isLoaded && !mapError && (
         <div className="absolute inset-0 flex items-center justify-center bg-white z-50">
           <div className="w-10 h-10 border-4 border-slate-100 border-t-blue-500 rounded-full animate-spin"></div>
+        </div>
+      )}
+
+      {mapError && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900 text-white z-50 p-10 text-center">
+          <div className="w-16 h-16 bg-rose-500/20 text-rose-500 rounded-full flex items-center justify-center mb-6">
+            <X size={32} />
+          </div>
+          <h2 className="text-xl font-black mb-2">Lỗi Khởi Tạo Bản Đồ</h2>
+          <p className="text-slate-400 max-w-md mb-8">{mapError}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-8 py-3 bg-blue-600 hover:bg-blue-500 rounded-xl font-black text-[12px] uppercase tracking-widest transition-all"
+          >
+            Thử lại
+          </button>
         </div>
       )}
 

@@ -163,17 +163,7 @@ const MapPage = () => {
         </div>
       </motion.div>
 
-      {/* Nút nổi hiện chat khi bị thu nhỏ */}
-      {isChatCollapsed && (
-        <motion.button
-          initial={{ opacity: 0, scale: 0.5 }}
-          animate={{ opacity: 1, scale: 1 }}
-          onClick={() => setIsChatCollapsed(false)}
-          className="absolute right-6 bottom-32 z-50 p-4 bg-blue-600 text-white rounded-full shadow-2xl hover:bg-blue-500 transition-all active:scale-95"
-        >
-          <MessageSquare className="w-6 h-6" />
-        </motion.button>
-      )}
+   
     </div>
   );
 };

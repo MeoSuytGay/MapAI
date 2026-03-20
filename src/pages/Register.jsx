@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "../hooks/useAuth";
+import { validateEmail, validateName, validatePassword } from "../utils/validators";
 import { 
   Mail, 
   Lock, 
@@ -18,19 +20,40 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  
+  const { register } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
 
-    setTimeout(() => {
-      // Giả lập đăng ký thành công
-      console.log("Register submitted:", { name, email, password });
+    // Validation
+    if (!validateName(name)) {
+      setError("Họ tên phải có ít nhất 2 ký tự.");
       setIsLoading(false);
-      navigate("/login");
-    }, 1500);
+      return;
+    }
+    if (!validateEmail(email)) {
+      setError("Địa chỉ email không hợp lệ.");
+      setIsLoading(false);
+      return;
+    }
+    if (!validatePassword(password)) {
+      setError("Mật khẩu phải có ít nhất 6 ký tự.");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      await register(name, email, password);
+      navigate("/");
+    } catch (err) {
+      setError(err.message || "Đã có lỗi xảy ra khi đăng ký.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

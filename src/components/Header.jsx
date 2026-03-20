@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
+import { useAuth } from '../hooks/useAuth'
 import { 
   Map, 
   Menu, 
@@ -9,11 +10,22 @@ import {
   Compass, 
   Zap, 
   MapIcon, 
-  ChevronDown 
+  ChevronDown,
+  LogOut,
+  User
 } from 'lucide-react'
+import { useState } from 'react'
 
 const Header = () => {
   const navigate = useNavigate()
+  const { user, logout } = useAuth()
+  const [showUserMenu, setShowUserMenu] = useState(false)
+
+  const handleLogout = () => {
+    logout()
+    navigate("/")
+    setShowUserMenu(false)
+  }
 
   return (
     <motion.header 
@@ -77,20 +89,69 @@ const Header = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <button 
-            onClick={() => navigate("/login")}
-            className="hidden sm:flex items-center gap-2 text-[12px] font-bold text-slate-300 hover:text-blue-400 transition-colors"
-          >
-            <LogIn size={15} /> Đăng nhập
-          </button>
-          <motion.button 
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => navigate("/register")}
-            className="px-5 py-2 bg-white text-slate-950 text-[12px] font-black rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-xl shadow-white/5"
-          >
-            Bắt đầu
-          </motion.button>
+          {!user ? (
+            <>
+              <button 
+                onClick={() => navigate("/login")}
+                className="hidden sm:flex items-center gap-2 text-[12px] font-bold text-slate-300 hover:text-blue-400 transition-colors"
+              >
+                <LogIn size={15} /> Đăng nhập
+              </button>
+              <motion.button 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => navigate("/register")}
+                className="px-5 py-2 bg-white text-slate-950 text-[12px] font-black rounded-xl hover:bg-blue-600 hover:text-white transition-all shadow-xl shadow-white/5"
+              >
+                Bắt đầu
+              </motion.button>
+            </>
+          ) : (
+            <div className="relative">
+              <button 
+                onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center gap-3 pl-3 pr-1 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-all group"
+              >
+                <div className="flex flex-col items-end hidden sm:flex">
+                  <span className="text-[10px] font-black text-white leading-none">{user.name}</span>
+                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-wider">{user.role}</span>
+                </div>
+                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center border border-white/20 shadow-lg group-hover:scale-105 transition-transform">
+                  <User size={14} className="text-white" />
+                </div>
+              </button>
+
+              <AnimatePresence>
+                {showUserMenu && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 mt-3 w-48 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl py-2 z-50 overflow-hidden backdrop-blur-xl"
+                  >
+                    <div className="px-4 py-3 border-b border-white/5 sm:hidden">
+                      <p className="text-[12px] font-black text-white">{user.name}</p>
+                      <p className="text-[10px] text-slate-500">{user.email}</p>
+                    </div>
+                    <button className="w-full px-4 py-2.5 text-left text-[12px] font-bold text-slate-300 hover:bg-white/5 hover:text-white flex items-center gap-2.5 transition-colors">
+                      <User size={14} className="text-blue-500" /> Hồ sơ cá nhân
+                    </button>
+                    <button className="w-full px-4 py-2.5 text-left text-[12px] font-bold text-slate-300 hover:bg-white/5 hover:text-white flex items-center gap-2.5 transition-colors">
+                      <MapIcon size={14} className="text-indigo-500" /> Bản đồ của tôi
+                    </button>
+                    <div className="h-[1px] bg-white/5 my-1"></div>
+                    <button 
+                      onClick={handleLogout}
+                      className="w-full px-4 py-2.5 text-left text-[12px] font-bold text-rose-400 hover:bg-rose-500/10 flex items-center gap-2.5 transition-colors"
+                    >
+                      <LogOut size={14} /> Đăng xuất
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+          
           <button className="lg:hidden text-white p-1.5 bg-white/5 rounded-lg border border-white/10">
             <Menu size={18} />
           </button>

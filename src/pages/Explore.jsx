@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, Star, Coffee, Utensils, Camera, TrendingUp, Filter, ArrowRight } from 'lucide-react';
+import { Search, MapPin, Star, Coffee, Utensils, Camera, TrendingUp, Filter, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // ... (locations and categories definitions remain the same)
@@ -13,6 +13,18 @@ const locations = [
   { id: 6, name: "Wonderlust Cafe", type: "Cafe", lat: 16.0652, lng: 108.2205, rating: 4.7, image: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=1000&auto=format&fit=crop", tags: ["Sống ảo", "Thiết kế"], distance: "1.5km", isFeatured: false },
   { id: 7, name: "Hải sản Năm Đảnh", type: "Ăn uống", lat: 16.0963, lng: 108.2562, rating: 4.4, image: "https://images.unsplash.com/photo-1551489186-cf8726f514f8?q=80&w=1000&auto=format&fit=crop", tags: ["Hải sản", "Giá rẻ"], distance: "4.2km", isFeatured: false },
   { id: 8, name: "Sơn Trà Marina", type: "Cafe", lat: 16.1215, lng: 108.2750, rating: 4.8, image: "https://images.unsplash.com/photo-1445116572660-236099ec97a0?q=80&w=1000&auto=format&fit=crop", tags: ["View đẹp", "Địa Trung Hải"], distance: "7.5km", isFeatured: false },
+  { id: 9, name: "Chùa Linh Ứng", type: "Du lịch", lat: 16.1002, lng: 108.2775, rating: 4.9, image: "https://images.unsplash.com/photo-1598250074212-0761e138a412?q=80&w=1000&auto=format&fit=crop", tags: ["Tâm linh", "View đẹp"], distance: "6.5km", isFeatured: true },
+  { id: 10, name: "Bảo tàng Chăm", type: "Du lịch", lat: 16.0614, lng: 108.2227, rating: 4.5, image: "https://images.unsplash.com/photo-1582234032482-62323e0ecf79?q=80&w=1000&auto=format&fit=crop", tags: ["Văn hóa", "Lịch sử"], distance: "0.5km", isFeatured: false },
+  { id: 11, name: "Chợ Cồn", type: "Ăn uống", lat: 16.0682, lng: 108.2155, rating: 4.6, image: "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?q=80&w=1000&auto=format&fit=crop", tags: ["Ẩm thực", "Bình dân"], distance: "1.2km", isFeatured: false },
+  { id: 12, name: "Avo Cafe", type: "Cafe", lat: 16.0725, lng: 108.2248, rating: 4.4, image: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=1000&auto=format&fit=crop", tags: ["Tối giản", "Làm việc"], distance: "1.0km", isFeatured: false },
+  { id: 13, name: "Ngũ Hành Sơn", type: "Du lịch", lat: 16.0033, lng: 108.2625, rating: 4.7, image: "https://images.unsplash.com/photo-1506461883276-594a12b11cf3?q=80&w=1000&auto=format&fit=crop", tags: ["Leo núi", "Khám phá"], distance: "8.0km", isFeatured: true },
+  { id: 14, name: "Dreamy Sky", type: "Cafe", lat: 16.0595, lng: 108.2410, rating: 4.6, image: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=1000&auto=format&fit=crop", tags: ["Tone trắng", "Hàn Quốc"], distance: "2.8km", isFeatured: false },
+  { id: 15, name: "Mì Quảng Ếch Bếp Trang", type: "Ăn uống", lat: 16.0645, lng: 108.2235, rating: 4.5, image: "https://images.unsplash.com/photo-1551489186-cf8726f514f8?q=80&w=1000&auto=format&fit=crop", tags: ["Đặc sản", "Sạch sẽ"], distance: "0.7km", isFeatured: false },
+  { id: 16, name: "Cầu Thuận Phước", type: "Du lịch", lat: 16.0945, lng: 108.2215, rating: 4.7, image: "https://images.unsplash.com/photo-1445116572660-236099ec97a0?q=80&w=1000&auto=format&fit=crop", tags: ["Cảnh đẹp", "Hoàng hôn"], distance: "4.5km", isFeatured: false },
+  { id: 17, name: "Reply 1988 Cafe", type: "Cafe", lat: 16.0615, lng: 108.2195, rating: 4.7, image: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=1000&auto=format&fit=crop", tags: ["Vintage", "Hoài niệm"], distance: "1.1km", isFeatured: false },
+  { id: 18, name: "Hải sản Bé Mặn", type: "Ăn uống", lat: 16.0715, lng: 108.2485, rating: 4.3, image: "https://images.unsplash.com/photo-1551489186-cf8726f514f8?q=80&w=1000&auto=format&fit=crop", tags: ["Tươi sống", "Nhộn nhịp"], distance: "3.5km", isFeatured: false },
+  { id: 19, name: "Công viên APEC", type: "Du lịch", lat: 16.0598, lng: 108.2255, rating: 4.6, image: "https://images.unsplash.com/photo-1559592442-992ca3993433?q=80&w=1000&auto=format&fit=crop", tags: ["Kiến trúc", "Check-in"], distance: "0.9km", isFeatured: false },
+  { id: 20, name: "Tasty Coffee", type: "Cafe", lat: 16.0675, lng: 108.2125, rating: 4.5, image: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=1000&auto=format&fit=crop", tags: ["Giá rẻ", "Sinh viên"], distance: "1.8km", isFeatured: false },
 ];
 
 const categories = [
@@ -23,11 +35,19 @@ const categories = [
   { id: 'trending', name: 'Trending', icon: <TrendingUp size={18} />, isTrending: true },
 ];
 
+const ITEMS_PER_PAGE = 6;
+
 const Explore = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [isSearching, setIsSearching] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+
+  // Reset page when tab or search changes
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchTerm]);
 
   // Xử lý filter
   const filteredLocations = useMemo(() => {
@@ -44,6 +64,13 @@ const Explore = () => {
       return matchesSearch && matchesTab;
     });
   }, [searchTerm, activeTab]);
+
+  // Pagination logic
+  const totalPages = Math.ceil(filteredLocations.length / ITEMS_PER_PAGE);
+  const currentItems = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredLocations.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredLocations, currentPage]);
 
   const handleLocationClick = (loc) => {
     navigate(`/map?lat=${loc.lat}&lng=${loc.lng}`);
@@ -142,17 +169,14 @@ const Explore = () => {
           </div>
         </section>
 
-        {/* Featured Section (Carousel) */}
-        {activeTab === 'all' && !searchTerm && (
+        {/* Featured Section (Carousel) - Only show on first page of 'all' tab */}
+        {activeTab === 'all' && !searchTerm && currentPage === 1 && (
           <section className="mb-16">
             <div className="flex justify-between items-end mb-6">
               <h2 className="text-2xl font-bold flex items-center gap-2">
                 <Star className="text-yellow-500 fill-yellow-500" size={24} />
                 Địa điểm nổi bật
               </h2>
-              <button className="text-indigo-400 text-sm font-medium flex items-center gap-1 hover:text-indigo-300 transition-colors">
-                Xem tất cả <ArrowRight size={14} />
-              </button>
             </div>
             <div className="flex gap-6 overflow-x-auto pb-6 snap-x no-scrollbar">
               {locations.filter(l => l.isFeatured).map(loc => (
@@ -191,7 +215,7 @@ const Explore = () => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
             <AnimatePresence mode='popLayout'>
-              {filteredLocations.map((loc) => (
+              {currentItems.map((loc) => (
                 <motion.div
                   layout
                   initial={{ opacity: 0, scale: 0.9 }}
@@ -234,6 +258,52 @@ const Explore = () => {
               ))}
             </AnimatePresence>
           </div>
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex justify-center items-center gap-2 mt-16">
+              <button
+                disabled={currentPage === 1}
+                onClick={() => {
+                  setCurrentPage(prev => Math.max(prev - 1, 1));
+                  window.scrollTo({ top: 400, behavior: 'smooth' });
+                }}
+                className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronLeft size={20} />
+              </button>
+              
+              <div className="flex gap-2">
+                {[...Array(totalPages)].map((_, i) => (
+                  <button
+                    key={i + 1}
+                    onClick={() => {
+                      setCurrentPage(i + 1);
+                      window.scrollTo({ top: 400, behavior: 'smooth' });
+                    }}
+                    className={`w-10 h-10 rounded-xl font-bold text-sm transition-all ${
+                      currentPage === i + 1
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-slate-900 border border-slate-800 text-slate-400 hover:border-slate-700'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                disabled={currentPage === totalPages}
+                onClick={() => {
+                  setCurrentPage(prev => Math.min(prev + 1, totalPages));
+                  window.scrollTo({ top: 400, behavior: 'smooth' });
+                }}
+                className="p-2 rounded-xl bg-slate-900 border border-slate-800 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                <ChevronRight size={20} />
+              </button>
+            </div>
+          )}
 
           {filteredLocations.length === 0 && (
             <div className="text-center py-20">

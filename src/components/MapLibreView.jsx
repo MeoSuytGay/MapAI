@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { Layers, Box, RotateCw, RotateCcw, ChevronUp, ChevronDown, Compass } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 
 const CATEGORY_COLORS = {
   'food': '#ff9f43',
@@ -16,6 +17,7 @@ const CATEGORY_COLORS = {
 };
 
 const MapLibreView = () => {
+  const [searchParams] = useSearchParams();
   const mapContainer = useRef(null);
   const map = useRef(null);
   const markersRef = useRef({}); 
@@ -73,6 +75,38 @@ const MapLibreView = () => {
       }
     });
   }, []);
+
+  // Xử lý zoom tới tọa độ từ URL
+  useEffect(() => {
+    if (!isLoaded || !map.current) return;
+    
+    const lat = parseFloat(searchParams.get('lat'));
+    const lng = parseFloat(searchParams.get('lng'));
+
+    if (!isNaN(lat) && !isNaN(lng)) {
+      map.current.easeTo({
+        center: [lng, lat],
+        zoom: 17,
+        pitch: 45,
+        duration: 2000
+      });
+
+      // Thêm một marker đặc biệt cho địa điểm đang tìm kiếm
+      const el = document.createElement('div');
+      el.className = 'search-focus-marker';
+      el.innerHTML = `
+        <div class="relative flex items-center justify-center">
+          <div class="absolute w-12 h-12 bg-blue-500/20 rounded-full animate-ping"></div>
+          <div class="absolute w-8 h-8 bg-blue-500/40 rounded-full animate-pulse"></div>
+          <div class="w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow-2xl z-10"></div>
+        </div>
+      `;
+      
+      new maplibregl.Marker({ element: el })
+        .setLngLat([lng, lat])
+        .addTo(map.current);
+    }
+  }, [isLoaded, searchParams]);
 
   useEffect(() => {
     if (!MAPTILER_KEY || map.current) return;

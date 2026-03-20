@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "../hooks/useAuth";
+import { validateEmail } from "../utils/validators";
 import { 
   Mail, 
   ArrowRight, 
@@ -14,18 +16,29 @@ export default function ForgotPassword() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSent, setIsSent] = useState(false);
   const [error, setError] = useState("");
+  
+  const { forgotPassword } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
     setError("");
 
-    setTimeout(() => {
-      console.log("Password reset request for:", email);
+    if (!validateEmail(email)) {
+      setError("Địa chỉ email không hợp lệ.");
       setIsLoading(false);
+      return;
+    }
+
+    try {
+      await forgotPassword(email);
       setIsSent(true);
-    }, 1500);
+    } catch (err) {
+      setError(err.message || "Đã có lỗi xảy ra.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

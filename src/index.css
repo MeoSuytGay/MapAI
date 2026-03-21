@@ -14,4 +14,7 @@
   .bg-glass {
     @apply bg-slate-900/40 backdrop-blur-xl border border-white/5;
   }
+  .writing-vertical {
+    writing-mode: vertical-rl;
+  }
 }

@@ -85,6 +85,38 @@ const MapLibreView = ({ isDirectionsMode, setIsDirectionsMode, isNavigating, set
     });
   }, [routeInfo, is3D, addToast]);
 
+  const handleMoveToStep = useCallback((index) => {
+    if (!map.current || !routeInfo || !routeInfo.legs?.[0]?.steps?.[index]) return;
+    
+    const steps = routeInfo.legs[0].steps;
+    const currentStep = steps[index];
+    const nextStep = steps[index + 1];
+    
+    const lon1 = currentStep.maneuver.location[0];
+    const lat1 = currentStep.maneuver.location[1];
+    
+    let targetBearing = map.current.getBearing();
+    
+    if (nextStep) {
+      const lon2 = nextStep.maneuver.location[0];
+      const lat2 = nextStep.maneuver.location[1];
+      
+      const y = Math.sin((lon2 - lon1) * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180);
+      const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
+                Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos((lon2 - lon1) * Math.PI / 180);
+      targetBearing = Math.atan2(y, x) * 180 / Math.PI;
+    }
+
+    map.current.flyTo({
+      center: [lon1, lat1],
+      zoom: 18,
+      pitch: 75,
+      bearing: targetBearing,
+      duration: 1500,
+      essential: true
+    });
+  }, [routeInfo]);
+
   const handleShowDetails = useCallback(async (name, coordinates) => {
     setIsDetailLoading(true);
     try {
@@ -287,6 +319,7 @@ const MapLibreView = ({ isDirectionsMode, setIsDirectionsMode, isNavigating, set
             }}
             onStopNavigation={() => setIsNavigating(false)}
             onMoveCamera={handleMoveCamera}
+            onMoveToStep={handleMoveToStep}
             onBack={() => { 
               setIsDirectionsMode(false); 
               setIsNavigating(false);

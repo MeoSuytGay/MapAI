@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Search, MapPin, X, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useToast } from '../context/ToastContext';
 
 const SearchBar = () => {
   const [query, setQuery] = useState('');
@@ -9,6 +10,7 @@ const SearchBar = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const searchRef = useRef(null);
 
   useEffect(() => {
@@ -33,11 +35,13 @@ const SearchBar = () => {
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}&limit=5&addressdetails=1`
       );
+      if (!response.ok) throw new Error("Lỗi kết nối tìm kiếm.");
       const data = await response.json();
       setResults(data);
       setShowResults(true);
     } catch (error) {
       console.error('Search error:', error);
+      addToast("Không thể tìm kiếm địa điểm này", "error");
     } finally {
       setIsLoading(false);
     }

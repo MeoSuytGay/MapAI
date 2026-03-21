@@ -58,7 +58,7 @@ const MapPage = () => {
       
       {/* --- PHẦN BẢN ĐỒ --- */}
       <motion.div 
-        animate={{ width: isChatCollapsed ? '100%' : '65%' }}
+        animate={{ width: isChatCollapsed ? '100%' : '70%' }}
         transition={{ type: 'spring', damping: 20, stiffness: 100 }}
         className="relative h-full bg-[#121212] overflow-hidden"
       >
@@ -84,7 +84,7 @@ const MapPage = () => {
       <button
         onClick={() => setIsChatCollapsed(!isChatCollapsed)}
         className="absolute z-50 top-1/2 -translate-y-1/2 transition-all duration-300 flex items-center justify-center w-8 h-12 bg-slate-900 border border-white/10 text-white rounded-l-xl hover:bg-blue-600 shadow-2xl"
-        style={{ right: isChatCollapsed ? '0' : '35%' }}
+        style={{ right: isChatCollapsed ? '0' : '30%' }}
       >
         {isChatCollapsed ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
       </button>
@@ -92,7 +92,7 @@ const MapPage = () => {
       {/* --- PHẦN CHAT UI --- */}
       <motion.div 
         animate={{ 
-          width: isChatCollapsed ? '0%' : '35%',
+          width: isChatCollapsed ? '0%' : '30%',
           opacity: isChatCollapsed ? 0 : 1,
           x: isChatCollapsed ? 100 : 0
         }}

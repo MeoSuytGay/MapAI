@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../hooks/useAuth";
+import { useToast } from "../context/ToastContext";
 import { validateEmail, validateName, validatePassword } from "../utils/validators";
 import { 
   Mail, 
@@ -22,6 +23,7 @@ export default function Register() {
   const [error, setError] = useState("");
   
   const { register } = useAuth();
+  const { addToast } = useToast();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -32,25 +34,31 @@ export default function Register() {
     // Validation
     if (!validateName(name)) {
       setError("Họ tên phải có ít nhất 2 ký tự.");
+      addToast("Họ tên không hợp lệ", "error");
       setIsLoading(false);
       return;
     }
     if (!validateEmail(email)) {
       setError("Địa chỉ email không hợp lệ.");
+      addToast("Email không hợp lệ", "error");
       setIsLoading(false);
       return;
     }
     if (!validatePassword(password)) {
       setError("Mật khẩu phải có ít nhất 6 ký tự.");
+      addToast("Mật khẩu không hợp lệ", "error");
       setIsLoading(false);
       return;
     }
 
     try {
       await register(name, email, password);
+      addToast("Khởi tạo tài khoản thành công!", "success");
       navigate("/");
     } catch (err) {
-      setError(err.message || "Đã có lỗi xảy ra khi đăng ký.");
+      const msg = err.message || "Đã có lỗi xảy ra khi đăng ký.";
+      setError(msg);
+      addToast(msg, "error");
     } finally {
       setIsLoading(false);
     }

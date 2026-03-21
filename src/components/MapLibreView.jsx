@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { Layers, Box, RotateCw, RotateCcw, ChevronUp, ChevronDown, Compass, X, Star, MapPin, Phone, Globe, Clock, Image as ImageIcon, ExternalLink, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
+import { Layers, Box, RotateCw, RotateCcw, ChevronUp, ChevronDown, Compass, X, Star, MapPin, Phone, Globe, Clock, Image as ImageIcon, ExternalLink, ChevronLeft, ChevronRight, MessageSquare, Navigation } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchPlaceDetails } from '../services/serpApi';
 import PlaceDetailPanel from './PlaceDetailPanel';
+import DirectionsPanel from './DirectionsPanel';
+import { useToast } from '../context/ToastContext';
 
 const CATEGORY_COLORS = {
   'food': '#ff9f43',
@@ -24,6 +26,7 @@ const MapLibreView = () => {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const markersRef = useRef({}); 
+  const routeMarkersRef = useRef([]);
   const [is3D, setIs3D] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [bearing, setBearing] = useState(0);
@@ -33,12 +36,19 @@ const MapLibreView = () => {
   const [selectedPlace, setSelectedPlace] = useState(null);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
 
+  // State for directions
+  const [isDirectionsMode, setIsDirectionsMode] = useState(false);
+  const [routeInfo, setRouteInfo] = useState(null);
+  const [initialOrigin, setInitialOrigin] = useState(null);
+  const [initialDestination, setInitialDestination] = useState(null);
+
+  const { addToast, removeToast } = useToast();
+
   const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY;
   
-  // Fallback to a free style if MapTiler key is missing or invalid
   const styleUrl = (MAPTILER_KEY && MAPTILER_KEY !== 'YOUR_MAPTILER_KEY_HERE')
     ? `https://api.maptiler.com/maps/streets-v2/style.json?key=${MAPTILER_KEY}`
-    : 'https://demotiles.maplibre.org/style.json'; // Open source basic style
+    : 'https://demotiles.maplibre.org/style.json';
 
   const handleShowDetails = useCallback(async (name, coordinates) => {
     setIsDetailLoading(true);
@@ -47,10 +57,124 @@ const MapLibreView = () => {
       setSelectedPlace(details);
     } catch (error) {
       console.error("Failed to load details", error);
+      addToast("Không thể tải thông tin địa điểm", "error");
     } finally {
       setIsDetailLoading(false);
     }
+  }, [addToast]);
+
+  const clearRoute = useCallback(() => {
+    if (!map.current) return;
+    if (map.current.getLayer('route-line')) map.current.removeLayer('route-line');
+    if (map.current.getLayer('route-line-casing')) map.current.removeLayer('route-line-casing');
+    if (map.current.getSource('route')) map.current.removeSource('route');
+    
+    routeMarkersRef.current.forEach(m => m.remove());
+    routeMarkersRef.current = [];
+    setRouteInfo(null);
   }, []);
+
+  const handleRouteSelected = async (origin, destination, mode = 'driving') => {
+    if (!map.current) return;
+    
+    const loadingToastId = addToast(`Đang tìm tuyến đường cho ${mode === 'driving' ? 'ô tô' : mode === 'bicycle' ? 'xe đạp' : 'người đi bộ'}...`, "loading", Infinity);
+
+    try {
+      // Map mode to correct server prefix for routing.openstreetmap.de
+      const serverPrefix = mode === 'driving' ? 'routed-car' : mode === 'bicycle' ? 'routed-bike' : 'routed-foot';
+      // Profile names in URL: driving, bicycle, foot
+      const profile = mode; 
+
+      const url = `https://routing.openstreetmap.de/${serverPrefix}/route/v1/${profile}/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson`;
+      
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error("Không thể kết nối đến máy chủ chỉ đường.");
+      }
+
+      const data = await response.json();
+
+      if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+        throw new Error('Không tìm thấy tuyến đường khả thi giữa hai điểm này.');
+      }
+
+      const route = data.routes[0];
+      const geometry = route.geometry;
+
+      if (!geometry) {
+        throw new Error('Dữ liệu tọa độ tuyến đường bị thiếu.');
+      }
+
+      clearRoute();
+
+      // Thêm Source và Layer
+      map.current.addSource('route', {
+        type: 'geojson',
+        data: {
+          type: 'Feature',
+          properties: {},
+          geometry: geometry
+        }
+      });
+
+      // Viền cho đường đi (Casing)
+      map.current.addLayer({
+        id: 'route-line-casing',
+        type: 'line',
+        source: 'route',
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: {
+          'line-color': '#1e40af',
+          'line-width': 12,
+          'line-opacity': 0.3
+        }
+      });
+
+      // Đường đi chính
+      map.current.addLayer({
+        id: 'route-line',
+        type: 'line',
+        source: 'route',
+        layout: { 'line-join': 'round', 'line-cap': 'round' },
+        paint: {
+          'line-color': '#3b82f6',
+          'line-width': 6
+        }
+      });
+
+      // Thêm Marker cho điểm đầu và cuối
+      const startEl = document.createElement('div');
+      startEl.className = 'w-6 h-6 bg-blue-500 rounded-full border-4 border-white shadow-xl flex items-center justify-center text-white';
+      startEl.innerHTML = '<div class="w-2 h-2 bg-white rounded-full"></div>';
+      
+      const endEl = document.createElement('div');
+      endEl.className = 'w-8 h-8 bg-rose-500 rounded-full border-4 border-white shadow-xl flex items-center justify-center text-white';
+      endEl.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>';
+
+      const startMarker = new maplibregl.Marker({ element: startEl }).setLngLat([origin.lng, origin.lat]).addTo(map.current);
+      const endMarker = new maplibregl.Marker({ element: endEl }).setLngLat([destination.lng, destination.lat]).addTo(map.current);
+      
+      routeMarkersRef.current = [startMarker, endMarker];
+
+      // Fit map to route
+      const coordinates = geometry.coordinates;
+      const bounds = coordinates.reduce((acc, coord) => {
+        return acc.extend(coord);
+      }, new maplibregl.LngLatBounds(coordinates[0], coordinates[0]));
+
+      map.current.fitBounds(bounds, { padding: 100, duration: 1000 });
+      setRouteInfo(route);
+      
+      removeToast(loadingToastId);
+      addToast("Đã tìm thấy tuyến đường!", "success");
+
+    } catch (error) {
+      console.error("Routing error:", error);
+      removeToast(loadingToastId);
+      addToast(error.message, "error");
+    }
+  };
 
   // Expose function to window for popup button access
   useEffect(() => {
@@ -125,7 +249,6 @@ const MapLibreView = () => {
         duration: 2000
       });
 
-      // Thêm một marker đặc biệt cho địa điểm đang tìm kiếm
       const el = document.createElement('div');
       el.className = 'search-focus-marker';
       el.innerHTML = `
@@ -163,7 +286,6 @@ const MapLibreView = () => {
         setIsLoaded(true);
         setMapError(null);
         
-        // Only add terrain if key is valid
         if (MAPTILER_KEY && MAPTILER_KEY !== 'YOUR_MAPTILER_KEY_HERE') {
           mapInstance.addSource('maptiler-terrain', {
             type: 'raster-dem',
@@ -222,12 +344,20 @@ const MapLibreView = () => {
               <span class="text-[9px] font-black uppercase tracking-widest text-blue-400">${category}</span>
             </div>
             <h3 class="text-sm font-bold mb-3 leading-tight">${name}</h3>
-            <button 
-              onclick="window.showPlaceDetails('${name}', ${e.lngLat.lng}, ${e.lngLat.lat})"
-              class="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black rounded-lg transition-all active:scale-95 uppercase"
-            >
-              XEM CHI TIẾT
-            </button>
+            <div class="grid grid-cols-2 gap-2">
+              <button 
+                onclick="window.showPlaceDetails('${name}', ${e.lngLat.lng}, ${e.lngLat.lat})"
+                class="py-2 bg-blue-600 hover:bg-blue-500 text-white text-[9px] font-black rounded-lg transition-all active:scale-95 uppercase"
+              >
+                CHI TIẾT
+              </button>
+              <button 
+                onclick="window.startDirectionsFromPopup('${name}', ${e.lngLat.lng}, ${e.lngLat.lat})"
+                class="py-2 bg-slate-800 hover:bg-slate-700 text-white text-[9px] font-black rounded-lg transition-all active:scale-95 uppercase flex items-center justify-center gap-1"
+              >
+                ĐƯỜNG ĐI
+              </button>
+            </div>
           </div>
         `;
 
@@ -240,6 +370,14 @@ const MapLibreView = () => {
           .setHTML(popupContent)
           .addTo(mapInstance);
       });
+
+      // Add popup function to window
+      window.startDirectionsFromPopup = (name, lng, lat) => {
+        const origin = { name, lng, lat };
+        setInitialOrigin({...origin}); // Tạo object mới để trigger useEffect ở con
+        setInitialDestination(null);
+        setIsDirectionsMode(true);
+      };
 
       mapInstance.on('mousemove', (e) => {
         const p = 8;
@@ -295,6 +433,24 @@ const MapLibreView = () => {
     <div className="relative w-full h-full bg-[#f8f9fa] overflow-hidden">
       <div ref={mapContainer} className="absolute inset-0 w-full h-full" />
 
+      {/* Directions Panel */}
+      <AnimatePresence>
+        {isDirectionsMode && (
+          <DirectionsPanel 
+            initialOrigin={initialOrigin}
+            initialDestination={initialDestination}
+            routeInfo={routeInfo}
+            onBack={() => {
+              setIsDirectionsMode(false);
+              clearRoute();
+              setInitialOrigin(null);
+              setInitialDestination(null);
+            }}
+            onRouteSelected={handleRouteSelected}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Place Detail Panel (Right Side) */}
       <AnimatePresence>
         {selectedPlace && (
@@ -322,8 +478,33 @@ const MapLibreView = () => {
         )}
       </AnimatePresence>
 
-      {/* View Toggle (Now on the Right) */}
-      <div className="absolute bottom-10 right-10 z-20 flex flex-col gap-3">
+      {/* Quick Actions (Floating) */}
+      <div className="absolute top-10 left-10 z-20 flex flex-col gap-3">
+        {!isDirectionsMode && (
+          <button
+            onClick={() => setIsDirectionsMode(true)}
+            className="flex items-center gap-4 px-8 py-4 bg-white border border-slate-200 text-slate-900 rounded-[2rem] shadow-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all hover:bg-slate-50 active:scale-95"
+          >
+            <Navigation size={18} className="text-blue-600" />
+            Chỉ đường
+          </button>
+        )}
+      </div>
+
+      {/* View & Camera Controls (Bottom Right) */}
+      <div className="absolute bottom-10 right-10 z-20 flex flex-col gap-3 items-end">
+        {/* Camera Controls */}
+        <div className="flex flex-col bg-slate-950/80 backdrop-blur-xl rounded-[2rem] border border-white/10 p-1.5 shadow-2xl w-fit">
+          <button onClick={() => pitchMap(15)} className="p-3 text-white hover:bg-white/10 rounded-2xl transition-colors"><ChevronUp size={20} /></button>
+          <button onClick={() => rotateMap(-30)} className="p-3 text-white hover:bg-white/10 rounded-2xl transition-colors"><RotateCcw size={20} /></button>
+          <button onClick={() => map.current?.easeTo({bearing:0})} className="p-3 text-blue-400 hover:bg-white/10 rounded-2xl transition-colors">
+            <Compass size={20} style={{ transform: `rotate(${-bearing}deg)` }} />
+          </button>
+          <button onClick={() => rotateMap(30)} className="p-3 text-white hover:bg-white/10 rounded-2xl transition-colors"><RotateCw size={20} /></button>
+          <button onClick={() => pitchMap(-15)} className="p-3 text-white hover:bg-white/10 rounded-2xl transition-colors"><ChevronDown size={20} /></button>
+        </div>
+
+        {/* 2D/3D Toggle */}
         <button
           onClick={toggle3D}
           className={`flex items-center gap-4 px-8 py-4 rounded-[2rem] backdrop-blur-2xl border transition-all shadow-2xl font-black text-[10px] uppercase tracking-[0.2em] ${
@@ -333,19 +514,6 @@ const MapLibreView = () => {
           {is3D ? <Box size={18} className="animate-pulse" /> : <Layers size={18} />}
           {is3D ? 'Perspective: 3D' : 'View: 2D'}
         </button>
-      </div>
-
-      {/* Camera Controls (Now on the Left) */}
-      <div className="absolute bottom-10 left-10 z-20 flex flex-col gap-2">
-        <div className="flex flex-col bg-slate-950/80 backdrop-blur-xl rounded-[2rem] border border-white/10 p-1.5 shadow-2xl">
-          <button onClick={() => pitchMap(15)} className="p-3 text-white hover:bg-white/10 rounded-2xl transition-colors"><ChevronUp size={20} /></button>
-          <button onClick={() => rotateMap(-30)} className="p-3 text-white hover:bg-white/10 rounded-2xl transition-colors"><RotateCcw size={20} /></button>
-          <button onClick={() => map.current?.easeTo({bearing:0})} className="p-3 text-blue-400 hover:bg-white/10 rounded-2xl transition-colors">
-            <Compass size={20} style={{ transform: `rotate(${-bearing}deg)` }} />
-          </button>
-          <button onClick={() => rotateMap(30)} className="p-3 text-white hover:bg-white/10 rounded-2xl transition-colors"><RotateCw size={20} /></button>
-          <button onClick={() => pitchMap(-15)} className="p-3 text-white hover:bg-white/10 rounded-2xl transition-colors"><ChevronDown size={20} /></button>
-        </div>
       </div>
 
       {!isLoaded && !mapError && (

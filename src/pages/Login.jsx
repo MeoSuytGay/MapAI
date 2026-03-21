@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../hooks/useAuth";
+import { useToast } from "../context/ToastContext";
 import { 
   Mail, 
   Lock, 
@@ -22,6 +23,7 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   
   const { login } = useAuth();
+  const { addToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -35,10 +37,13 @@ export default function Login() {
 
     try {
       await login(email, password);
+      addToast("Đăng nhập hệ thống thành công!", "success");
       // Redirect to the intended page or home
       navigate(from, { replace: true });
     } catch (err) {
-      setError(err.message || "Đã có lỗi xảy ra khi đăng nhập.");
+      const msg = err.message || "Đã có lỗi xảy ra khi đăng nhập.";
+      setError(msg);
+      addToast(msg, "error");
     } finally {
       setIsLoading(false);
     }

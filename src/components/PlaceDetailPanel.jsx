@@ -119,11 +119,7 @@ const PlaceDetailPanel = ({ place, onClose }) => {
         </div>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto px-8 py-6 space-y-8 no-scrollbar">
-          <style>{`
-            .no-scrollbar::-webkit-scrollbar { display: none; }
-            .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-          `}</style>
+        <div className="flex-1 overflow-y-auto px-8 py-6 space-y-8 custom-scrollbar transition-all">
           <div className="p-5 rounded-3xl bg-white/[0.03] border border-white/10 relative overflow-hidden group">
             <div className="absolute top-0 left-0 w-0.5 h-full bg-blue-500/50 shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
             <p className="text-xs text-slate-300 leading-relaxed font-medium">

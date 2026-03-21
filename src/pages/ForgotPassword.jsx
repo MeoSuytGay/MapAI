@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../hooks/useAuth";
+import { useToast } from "../context/ToastContext";
 import { validateEmail } from "../utils/validators";
 import { 
   Mail, 
@@ -18,6 +19,7 @@ export default function ForgotPassword() {
   const [error, setError] = useState("");
   
   const { forgotPassword } = useAuth();
+  const { addToast } = useToast();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -27,6 +29,7 @@ export default function ForgotPassword() {
 
     if (!validateEmail(email)) {
       setError("Địa chỉ email không hợp lệ.");
+      addToast("Email không hợp lệ", "error");
       setIsLoading(false);
       return;
     }
@@ -34,8 +37,11 @@ export default function ForgotPassword() {
     try {
       await forgotPassword(email);
       setIsSent(true);
+      addToast("Yêu cầu khôi phục mật khẩu đã được gửi!", "success");
     } catch (err) {
-      setError(err.message || "Đã có lỗi xảy ra.");
+      const msg = err.message || "Đã có lỗi xảy ra.";
+      setError(msg);
+      addToast(msg, "error");
     } finally {
       setIsLoading(false);
     }

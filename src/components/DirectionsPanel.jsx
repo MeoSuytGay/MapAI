@@ -8,6 +8,7 @@ const DirectionsPanel = ({
   onStartNavigation,
   onStopNavigation,
   onMoveCamera,
+  onMoveToStep,
   isNavigating,
   initialOrigin = null, 
   initialDestination = null, 
@@ -31,23 +32,63 @@ const DirectionsPanel = ({
     { id: 'foot', icon: <Footprints size={18} />, label: 'Đi bộ' },
   ];
 
-  const getStepIcon = (modifier) => {
+  const getStepIcon = (modifier, type) => {
+    if (type === 'arrive') return <Flag size={22} className="text-rose-500" />;
+    if (type === 'depart') return <MapPin size={22} className="text-emerald-500" />;
+    
     switch (modifier) {
-      case 'right': return <CornerUpRight size={20} className="text-blue-400" />;
-      case 'left': return <CornerUpLeft size={20} className="text-blue-400" />;
-      case 'straight': return <ChevronUp size={20} className="text-emerald-400" />;
-      default: return <Navigation size={20} className="text-blue-400" />;
+      case 'right': 
+      case 'slight right': 
+      case 'sharp right': return <CornerUpRight size={24} className="text-blue-400" />;
+      case 'left': 
+      case 'slight left': 
+      case 'sharp left': return <CornerUpLeft size={24} className="text-blue-400" />;
+      case 'straight': return <ChevronUp size={24} className="text-emerald-400" />;
+      case 'uturn': return <ArrowLeftRight size={24} className="text-orange-400 rotate-180" />;
+      default: return <Navigation size={24} className="text-blue-400" />;
     }
   };
 
-  useEffect(() => {
-    if (isNavigating && steps.length > 0) {
-      const interval = setInterval(() => {
-        setCurrentStepIndex(prev => (prev + 1) % steps.length);
-      }, 5000); 
-      return () => clearInterval(interval);
+  const getStepAction = (step) => {
+    const type = step.maneuver.type;
+    const modifier = step.maneuver.modifier;
+    
+    if (type === 'arrive') return "Đã Đến Nơi";
+    if (type === 'depart') return "Bắt Đầu Đi";
+    
+    switch (modifier) {
+      case 'right': return "Rẽ Phải";
+      case 'left': return "Rẽ Trái";
+      case 'slight right': return "Chếch bên Phải";
+      case 'slight left': return "Chếch bên Trái";
+      case 'sharp right': return "Rẽ Gắt bên Phải";
+      case 'sharp left': return "Rẽ Gắt bên Trái";
+      case 'straight': return "Đi Thẳng";
+      case 'uturn': return "Quay Đầu";
+      default: return "Tiếp Tục";
     }
-  }, [isNavigating, steps]);
+  };
+
+  const getStepTarget = (step) => {
+    if (step.maneuver.type === 'arrive') return "Kết thúc hành trình tại đây";
+    if (step.name && step.name !== "") return `vào đường ${step.name}`;
+    if (step.maneuver.instruction.includes('vào')) return `vào ${step.maneuver.instruction.split('vào')[1]}`;
+    return "theo hướng dẫn trên bản đồ";
+  };
+
+  const handleNextStep = () => {
+    if (steps.length === 0) return;
+    const nextIndex = Math.min(currentStepIndex + 1, steps.length - 1);
+    setCurrentStepIndex(nextIndex);
+    onMoveToStep(nextIndex);
+  };
+
+  const handlePrevStep = () => {
+    if (steps.length === 0) return;
+    const prevIndex = Math.max(currentStepIndex - 1, 0);
+    setCurrentStepIndex(prevIndex);
+    onMoveToStep(prevIndex);
+  };
 
   const currentStep = steps[currentStepIndex];
 
@@ -106,7 +147,7 @@ const DirectionsPanel = ({
         className="absolute top-24 left-6 bg-slate-950/98 backdrop-blur-3xl border border-white/10 z-[100] flex flex-col shadow-[0_30px_60px_rgba(0,0,0,0.8)] rounded-[2rem] overflow-hidden transition-all duration-500"
       >
         {!isNavigating ? (
-          /* --- PHẦN CHI TIẾT ... --- */
+          /* --- PHẦN CHI TIẾT (Trạng thái chuẩn bị) --- */
           <div className="flex flex-col">
             <div className="p-7 border-b border-white/10 bg-gradient-to-br from-blue-500/10 via-transparent to-rose-500/5">
               <div className="flex items-center justify-between mb-6">
@@ -230,76 +271,52 @@ const DirectionsPanel = ({
           </div>
         ) : (
           /* --- PHẦN GIẢN ĐƠN (Khi đang dẫn đường) --- */
-          <div className="px-4 py-3 flex items-center gap-5 h-full bg-gradient-to-r from-blue-600/30 via-blue-600/5 to-transparent">
-            <div className="p-3 bg-blue-600 rounded-2xl text-white shadow-[0_0_20px_rgba(59,130,246,0.4)] shrink-0 scale-110">
-              {currentStep ? getStepIcon(currentStep.maneuver.modifier) : <Navigation size={22} className="animate-pulse" />}
+          <div className="px-5 py-3 flex items-center gap-5 h-full bg-gradient-to-r from-blue-600/30 via-blue-600/5 to-transparent">
+            <div className="p-3 bg-slate-900/80 rounded-2xl text-white shadow-2xl shrink-0 border border-white/10">
+              {currentStep ? getStepIcon(currentStep.maneuver.modifier, currentStep.maneuver.type) : <Navigation size={24} className="animate-pulse text-blue-400" />}
             </div>
             <div className="flex-1 min-w-0 flex flex-col justify-center">
-              <p className="text-[15px] font-black text-white leading-tight mb-1 truncate tracking-tight">
-                {currentStep ? currentStep.maneuver.instruction : destQuery}
+              <p className="text-[18px] font-black text-white leading-none mb-1.5 truncate tracking-tight uppercase">
+                {currentStep ? getStepAction(currentStep) : 'Đang tính toán'}
               </p>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-black text-blue-400 uppercase tracking-[0.1em]">
-                  {currentStep ? `${formatDistance(currentStep.distance).val} ${formatDistance(currentStep.distance).unit}` : 'Tiếp tục đi thẳng'}
+                <span className="text-[12px] font-bold text-blue-400 whitespace-nowrap">
+                  {currentStep ? `${formatDistance(currentStep.distance).val} ${formatDistance(currentStep.distance).unit}` : '-- m'}
                 </span>
                 <div className="w-1 h-1 rounded-full bg-white/20"></div>
-                <span className="text-[10px] font-bold text-white/30 uppercase tracking-widest">Hành trình tới {destQuery.split(',')[0]}</span>
+                <span className="text-[11px] font-medium text-white/60 truncate italic">
+                  {currentStep ? getStepTarget(currentStep) : 'Vui lòng chờ...'}
+                </span>
               </div>
             </div>
           </div>
         )}
       </motion.div>
 
-      {/* Bộ điều khiển 4 hướng (Giữa dưới) */}
+      {/* Bộ điều khiển 2 hướng (Giữa dưới) - Chỉ hiện mũi tên tối giản */}
       <AnimatePresence>
         {isNavigating && (
           <motion.div 
-            initial={{ y: 150, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 150, opacity: 0 }}
-            className="absolute bottom-10 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2"
+            initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }}
+            className="absolute bottom-12 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-8"
           >
-            <div className="flex flex-col items-center gap-2 p-2">
-              {/* Nút Tiến */}
-              <button 
-                onMouseDown={() => onMoveCamera('forward')} 
-                className="p-3 bg-white/10 backdrop-blur-md rounded-full text-white/70 transition-all 
-                           border border-white/10 hover:bg-blue-600 hover:text-white hover:border-blue-500
-                           active:scale-90 shadow-xl"
-              >
-                <ChevronUp size={22} />
-              </button>
+            {/* Nút Tiến tới bước sau */}
+            <button 
+              onClick={handleNextStep}
+              className="text-blue-500 hover:text-blue-400 transition-all active:scale-75 drop-shadow-[0_0_10px_rgba(59,130,246,0.8)]"
+              title="Bước tiếp theo"
+            >
+              <ChevronUp size={48} strokeWidth={3} />
+            </button>
 
-              <div className="flex gap-4">
-                {/* Nút Trái */}
-                <button 
-                  onMouseDown={() => onMoveCamera('left')} 
-                  className="p-3 bg-white/10 backdrop-blur-md rounded-full text-white/70 transition-all 
-                             border border-white/10 hover:bg-blue-600 hover:text-white hover:border-blue-500
-                             active:scale-90 shadow-xl"
-                >
-                  <ChevronLeft size={22} />
-                </button>
-
-                {/* Nút Lùi */}
-                <button 
-                  onMouseDown={() => onMoveCamera('backward')} 
-                  className="p-3 bg-white/10 backdrop-blur-md rounded-full text-white/70 transition-all 
-                             border border-white/10 hover:bg-blue-600 hover:text-white hover:border-blue-500
-                             active:scale-90 shadow-xl"
-                >
-                  <ChevronDown size={22} />
-                </button>
-
-                {/* Nút Phải */}
-                <button 
-                  onMouseDown={() => onMoveCamera('right')} 
-                  className="p-3 bg-white/10 backdrop-blur-md rounded-full text-white/70 transition-all 
-                             border border-white/10 hover:bg-blue-600 hover:text-white hover:border-blue-500
-                             active:scale-90 shadow-xl"
-                >
-                  <ChevronRight size={22} />
-                </button>
-              </div>
-            </div>
+            {/* Nút Quay lại bước trước */}
+            <button 
+              onClick={handlePrevStep}
+              className="text-white/30 hover:text-white/60 transition-all active:scale-75 drop-shadow-[0_0_8px_rgba(0,0,0,0.5)]"
+              title="Bước trước đó"
+            >
+              <ChevronDown size={40} strokeWidth={3} />
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

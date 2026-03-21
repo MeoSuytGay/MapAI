@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { Layers, Box, RotateCw, RotateCcw, ChevronUp, ChevronDown, Compass, X, Star, MapPin, Phone, Globe, Clock, Image as ImageIcon, ExternalLink, ChevronLeft, ChevronRight, MessageSquare, Navigation } from 'lucide-react';
+import { Layers, Box, RotateCw, RotateCcw, ChevronUp, ChevronDown, Compass, X, Star, MapPin, Phone, Globe, Clock, Image as ImageIcon, ExternalLink, ChevronLeft, ChevronRight, MessageSquare, Navigation, LocateFixed } from 'lucide-react';
 import { useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { fetchPlaceDetails } from '../services/serpApi';
@@ -27,6 +27,7 @@ const MapLibreView = ({ isDirectionsMode, setIsDirectionsMode, isNavigating, set
   const map = useRef(null);
   const markersRef = useRef({}); 
   const routeMarkersRef = useRef([]);
+  const userMarkerRef = useRef(null);
   const [is3D, setIs3D] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
   const [bearing, setBearing] = useState(0);
@@ -40,6 +41,60 @@ const MapLibreView = ({ isDirectionsMode, setIsDirectionsMode, isNavigating, set
   const [initialDestination, setInitialDestination] = useState(null);
 
   const { addToast, removeToast } = useToast();
+
+  const handleLocateUser = useCallback(() => {
+    if (!navigator.geolocation) {
+      addToast("Trình duyệt không hỗ trợ định vị.", "error");
+      return;
+    }
+
+    const loadingId = addToast("Đang xác định vị trí của bạn...", "loading", Infinity);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { longitude, latitude } = position.coords;
+        removeToast(loadingId);
+
+        if (!map.current) return;
+
+        map.current.flyTo({
+          center: [longitude, latitude],
+          zoom: 17,
+          essential: true,
+          duration: 2000
+        });
+
+        if (userMarkerRef.current) userMarkerRef.current.remove();
+
+        const el = document.createElement('div');
+        el.className = 'relative flex items-center justify-center';
+        el.innerHTML = `
+          <div class="absolute w-10 h-10 bg-blue-500/20 rounded-full animate-ping"></div>
+          <div class="relative w-5 h-5 bg-blue-600 rounded-full border-4 border-white shadow-lg"></div>
+        `;
+
+        userMarkerRef.current = new maplibregl.Marker({ element: el })
+          .setLngLat([longitude, latitude])
+          .addTo(map.current);
+
+        // Lưu vị trí vào sessionStorage để dùng cho các chức năng khác (ví dụ: chỉ đường)
+        const userLoc = {
+          name: "Vị trí của tôi",
+          lng: longitude,
+          lat: latitude,
+          timestamp: Date.now()
+        };
+        sessionStorage.setItem('user_location', JSON.stringify(userLoc));
+
+        addToast("Đã định vị và lưu vị trí của bạn!", "success");
+      },
+      (error) => {
+        removeToast(loadingId);
+        addToast(error.code === 1 ? "Vui lòng cho phép quyền truy cập vị trí." : "Không thể lấy vị trí.", "error");
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  }, [addToast, removeToast]);
 
   const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY?.trim();
   
@@ -194,8 +249,12 @@ const MapLibreView = ({ isDirectionsMode, setIsDirectionsMode, isNavigating, set
   useEffect(() => {
     window.showPlaceDetails = (name, lng, lat) => handleShowDetails(name, [lng, lat]);
     window.startDirectionsFromPopup = (name, lng, lat) => {
-      setInitialOrigin({ name, lng, lat });
-      setInitialDestination(null);
+      // Khi bắt đầu từ popup, lấy vị trí hiện tại làm điểm đi (nếu có) và địa điểm này làm điểm đến
+      const savedLoc = sessionStorage.getItem('user_location');
+      if (savedLoc) {
+        setInitialOrigin(JSON.parse(savedLoc));
+      }
+      setInitialDestination({ name, lng, lat });
       setIsDirectionsMode(true);
     };
     return () => {
@@ -203,6 +262,19 @@ const MapLibreView = ({ isDirectionsMode, setIsDirectionsMode, isNavigating, set
       delete window.startDirectionsFromPopup;
     };
   }, [handleShowDetails, setIsDirectionsMode]);
+
+  // Tự động nhận vị trí hiện tại khi bật chế độ chỉ đường
+  useEffect(() => {
+    if (isDirectionsMode && !initialOrigin && !isNavigating) {
+      const savedLoc = sessionStorage.getItem('user_location');
+      if (savedLoc) {
+        setInitialOrigin(JSON.parse(savedLoc));
+      } else {
+        // Nếu chưa có trong session, thử định vị tự động
+        handleLocateUser();
+      }
+    }
+  }, [isDirectionsMode, initialOrigin, isNavigating, handleLocateUser]);
 
   const updateMarkers = useCallback(() => {
     if (!map.current || !map.current.isStyleLoaded()) return;
@@ -346,11 +418,20 @@ const MapLibreView = ({ isDirectionsMode, setIsDirectionsMode, isNavigating, set
       </AnimatePresence>
       <div className="absolute bottom-10 right-10 z-20 flex flex-col gap-3 items-end">
         <div className="flex flex-col bg-slate-950/80 backdrop-blur-xl rounded-[2rem] border border-white/10 p-1.5 shadow-2xl w-fit">
-          <button onClick={() => map.current?.easeTo({ pitch: Math.min(map.current.getPitch() + 15, 85) })} className="p-3 text-white"><ChevronUp size={20} /></button>
-          <button onClick={() => map.current?.easeTo({ bearing: map.current.getBearing() - 30 })} className="p-3 text-white"><RotateCcw size={20} /></button>
-          <button onClick={() => map.current?.easeTo({ bearing: 0, pitch: 0 })} className="p-3 text-blue-400"><Compass size={20} style={{ transform: `rotate(${-bearing}deg)` }} /></button>
-          <button onClick={() => map.current?.easeTo({ bearing: map.current.getBearing() + 30 })} className="p-3 text-white"><RotateCw size={20} /></button>
-          <button onClick={() => map.current?.easeTo({ pitch: Math.max(map.current.getPitch() - 15, 0) })} className="p-3 text-white"><ChevronDown size={20} /></button>
+          <button onClick={() => map.current?.easeTo({ pitch: Math.min(map.current.getPitch() + 15, 85) })} className="p-3 text-white hover:text-blue-400 transition-colors"><ChevronUp size={20} /></button>
+          <button onClick={() => map.current?.easeTo({ bearing: map.current.getBearing() - 30 })} className="p-3 text-white hover:text-blue-400 transition-colors"><RotateCcw size={20} /></button>
+          
+          <button 
+            onClick={handleLocateUser} 
+            className="p-3 text-emerald-400 hover:bg-white/5 rounded-full transition-all"
+            title="Vị trí của tôi"
+          >
+            <LocateFixed size={20} />
+          </button>
+
+          <button onClick={() => map.current?.easeTo({ bearing: 0, pitch: 0 })} className="p-3 text-blue-400 hover:scale-110 transition-all"><Compass size={20} style={{ transform: `rotate(${-bearing}deg)` }} /></button>
+          <button onClick={() => map.current?.easeTo({ bearing: map.current.getBearing() + 30 })} className="p-3 text-white hover:text-blue-400 transition-colors"><RotateCw size={20} /></button>
+          <button onClick={() => map.current?.easeTo({ pitch: Math.max(map.current.getPitch() - 15, 0) })} className="p-3 text-white hover:text-blue-400 transition-colors"><ChevronDown size={20} /></button>
         </div>
         <button onClick={() => {
           if (!is3D) { map.current.setTerrain({ source: 'maptiler-terrain', exaggeration: 1.5 }); map.current.easeTo({ pitch: 65, zoom: 16 }); }

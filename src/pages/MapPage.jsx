@@ -83,9 +83,9 @@ const MapPage = () => {
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
                 onClick={() => setIsDirectionsMode(true)}
-                className="flex items-center gap-3 px-6 py-3.5 bg-blue-600 hover:bg-blue-500 text-white rounded-full shadow-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all active:scale-95 border border-blue-400/20"
+                className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-950 rounded-full shadow-xl font-black text-[9px] uppercase tracking-[0.15em] transition-all active:scale-95 border border-white/20"
               >
-                <Navigation size={16} />
+                <Navigation size={14} className="text-blue-600" />
                 Chỉ đường
               </motion.button>
             )}

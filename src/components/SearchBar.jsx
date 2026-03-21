@@ -65,7 +65,7 @@ const SearchBar = () => {
   };
 
   return (
-    <div ref={searchRef} className="relative w-[400px] z-20">
+    <div ref={searchRef} className="relative w-[410px] z-20">
       <div className="relative flex items-center group">
         <div className="absolute left-4 p-1 text-white/40 group-focus-within:text-blue-400 transition-colors z-10">
           {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}

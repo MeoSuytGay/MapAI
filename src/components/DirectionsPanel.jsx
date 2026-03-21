@@ -140,8 +140,9 @@ const DirectionsPanel = ({
       {/* Bảng chỉ đường CHÍNH (Chi tiết khi chưa đi, Giản đơn khi đang đi) */}
       <motion.div 
         animate={{ 
-          width: isNavigating ? '300px' : '440px',
+          width: isNavigating ? '300px' : '410px',
           height: isNavigating ? '90px' : 'auto',
+          maxHeight: isNavigating ? '90px' : 'calc(100vh - 120px)',
           x: isNavigating ? 0 : 0
         }}
         className="absolute top-24 left-6 bg-slate-950/98 backdrop-blur-3xl border border-white/10 z-[100] flex flex-col shadow-[0_30px_60px_rgba(0,0,0,0.8)] rounded-[2rem] overflow-hidden transition-all duration-500"
@@ -149,44 +150,44 @@ const DirectionsPanel = ({
         {!isNavigating ? (
           /* --- PHẦN CHI TIẾT (Trạng thái chuẩn bị) --- */
           <div className="flex flex-col">
-            <div className="p-7 border-b border-white/10 bg-gradient-to-br from-blue-500/10 via-transparent to-rose-500/5">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                  <button onClick={onBack} className="p-2 hover:bg-white/10 rounded-full text-white/70 transition-all border border-white/5"><ArrowLeft size={20} /></button>
-                  <h2 className="text-xs font-black uppercase tracking-[0.25em] text-white">Lập lộ trình</h2>
+            <div className="p-5 border-b border-white/10 bg-gradient-to-br from-blue-500/10 via-transparent to-rose-500/5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <button onClick={onBack} className="p-1.5 hover:bg-white/10 rounded-full text-white/70 transition-all border border-white/5"><ArrowLeft size={18} /></button>
+                  <h2 className="text-[10px] font-black uppercase tracking-[0.2em] text-white/90">Lập lộ trình</h2>
                 </div>
-                <div className="flex gap-2 bg-white/5 p-1 rounded-2xl border border-white/5">
+                <div className="flex gap-1 bg-white/5 p-1 rounded-xl border border-white/5">
                   {TRAVEL_MODES.map(m => (
-                    <button key={m.id} onClick={() => setTravelMode(m.id)} className={`p-2.5 rounded-xl transition-all ${travelMode === m.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-white/30 hover:text-white'}`}>{m.icon}</button>
+                    <button key={m.id} onClick={() => setTravelMode(m.id)} className={`p-2 rounded-lg transition-all ${travelMode === m.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-white/30 hover:text-white'}`}>{React.cloneElement(m.icon, { size: 14 })}</button>
                   ))}
                 </div>
               </div>
 
-              <div className="relative flex items-center gap-5">
+              <div className="relative flex items-center gap-4">
                 {/* Đường kẻ minh họa điểm đi-đến */}
-                <div className="absolute left-4 top-8 bottom-8 w-0.5 bg-gradient-to-b from-blue-500 via-blue-500/20 to-rose-500 rounded-full flex flex-col items-center justify-between py-1">
-                  <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.8)]"></div>
-                  <div className="w-2 h-2 rounded-full bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.8)]"></div>
+                <div className="absolute left-3.5 top-6 bottom-6 w-0.5 bg-gradient-to-b from-blue-500 via-blue-500/10 to-rose-500 rounded-full flex flex-col items-center justify-between py-1">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)]"></div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]"></div>
                 </div>
 
-                <div className="flex-1 flex flex-col gap-4">
+                <div className="flex-1 flex flex-col gap-2.5">
                   <div className="relative group">
-                    <input type="text" placeholder="Chọn điểm xuất phát..." value={originQuery} onFocus={() => setActiveInput('origin')} onChange={e => setOriginQuery(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-10 text-[13px] text-white focus:outline-none focus:border-blue-500/50 transition-all font-bold placeholder:text-white/20" />
-                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500/50 group-focus-within:text-blue-500 transition-colors" size={16} />
-                    {originQuery && <button onClick={() => {setOriginQuery(''); setOrigin(null);}} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white"><X size={14} /></button>}
+                    <input type="text" placeholder="Chọn điểm xuất phát..." value={originQuery} onFocus={() => setActiveInput('origin')} onChange={e => setOriginQuery(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-10 pr-10 text-[12px] text-white focus:outline-none focus:border-blue-500/50 transition-all font-bold placeholder:text-white/20" />
+                    <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-blue-500/50 group-focus-within:text-blue-500 transition-colors" size={14} />
+                    {originQuery && <button onClick={() => {setOriginQuery(''); setOrigin(null);}} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white"><X size={12} /></button>}
                   </div>
                   <div className="relative group">
-                    <input type="text" placeholder="Chọn điểm đến..." value={destQuery} onFocus={() => setActiveInput('dest')} onChange={e => setDestQuery(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-2xl py-3.5 pl-12 pr-10 text-[13px] text-white focus:outline-none focus:border-rose-500/50 transition-all font-bold placeholder:text-white/20" />
-                    <Flag className="absolute left-4 top-1/2 -translate-y-1/2 text-rose-500/50 group-focus-within:text-rose-500 transition-colors" size={16} />
-                    {destQuery && <button onClick={() => {setDestQuery(''); setDestination(null);}} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white"><X size={14} /></button>}
+                    <input type="text" placeholder="Chọn điểm đến..." value={destQuery} onFocus={() => setActiveInput('dest')} onChange={e => setDestQuery(e.target.value)} className="w-full bg-white/5 border border-white/10 rounded-xl py-2.5 pl-10 pr-10 text-[12px] text-white focus:outline-none focus:border-rose-500/50 transition-all font-bold placeholder:text-white/20" />
+                    <Flag className="absolute left-3.5 top-1/2 -translate-y-1/2 text-rose-500/50 group-focus-within:text-rose-500 transition-colors" size={14} />
+                    {destQuery && <button onClick={() => {setDestQuery(''); setDestination(null);}} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white"><X size={12} /></button>}
                   </div>
                 </div>
 
-                <button onClick={swapPoints} className="p-3.5 bg-white/5 hover:bg-white/10 rounded-2xl text-white/40 hover:text-white transition-all border border-white/5 shadow-inner"><ArrowLeftRight size={20} className="rotate-90" /></button>
+                <button onClick={swapPoints} className="p-3 bg-white/5 hover:bg-white/10 rounded-xl text-white/40 hover:text-white transition-all border border-white/5 shadow-inner"><ArrowLeftRight size={16} className="rotate-90" /></button>
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto no-scrollbar relative min-h-[100px] bg-slate-900/30">
+            <div className="flex-1 overflow-y-auto custom-scrollbar relative min-h-[100px] bg-slate-900/30 transition-all">
               <AnimatePresence mode="wait">
                 {activeInput ? (
                   <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 flex flex-col gap-2">

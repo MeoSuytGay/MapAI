@@ -7,9 +7,21 @@ const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-
 /**
  * Gọi Gemini API tổng quát
  */
-const callGemini = async (systemPrompt, schema, userMessage) => {
+/**
+ * Gọi Gemini API tổng quát kèm theo ngữ cảnh lịch sử
+ */
+const callGemini = async (systemPrompt, schema, userMessage, chatHistory = []) => {
+  // Chuyển đổi lịch sử chat sang định dạng của Gemini (user/model)
+  const history = chatHistory.map(msg => ({
+    role: msg.type === 'ai' ? 'model' : 'user',
+    parts: [{ text: msg.text }]
+  }));
+
   const requestBody = {
-    contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+    contents: [
+      ...history,
+      { role: 'user', parts: [{ text: userMessage }] }
+    ],
     system_instruction: { parts: [{ text: systemPrompt }] },
     generationConfig: {
       response_mime_type: "application/json",
@@ -60,11 +72,12 @@ export const askMapAI = async (userInput, chatHistory = []) => {
   }
 
   try {
-    // TẦNG 1: ROUTER - Phân loại ý định
+    // TẦNG 1: ROUTER - Phân loại ý định (Truyền chatHistory để hiểu ngữ cảnh)
     const route = await callGemini(
       prompts.ROUTER_SYSTEM_PROMPT, 
       prompts.ROUTER_SCHEMA, 
-      userInput
+      userInput,
+      chatHistory
     );
     
     console.log("AI Route Decision:", route);
@@ -84,7 +97,8 @@ export const askMapAI = async (userInput, chatHistory = []) => {
       return await callGemini(
         prompts.PLACE_DETAIL_SYSTEM_PROMPT, 
         prompts.PLACE_DETAIL_SCHEMA, 
-        userInput
+        userInput,
+        chatHistory
       );
     }
 
@@ -97,7 +111,7 @@ export const askMapAI = async (userInput, chatHistory = []) => {
         return {
           message: `Dạ, em đang chuyển bản đồ sang chế độ ${type} cho mình đây ạ!`,
           action: { type: 'SWITCH_VIEW', value: type },
-          suggestions: ["Tìm địa điểm gần đây", "Xem thông tin Cầu Rồng"]
+          suggestions: ["Những địa điểm đẹp ở Đà Nẵng", "Đến Đà Nẵng nên ăn gì?"]
         };
       }
 
@@ -122,6 +136,8 @@ export const askMapAI = async (userInput, chatHistory = []) => {
         );
         
         const bestMatch = results[picker.selected_index] || results[0];
+        // Lấy tên ngắn gọn để đưa vào suggestion
+        const shortName = bestMatch.name || bestMatch.display_name.split(',')[0];
 
         return {
           message: `Đây là vị trí của **${bestMatch.display_name}** mà bạn đang tìm ạ!`,
@@ -132,7 +148,7 @@ export const askMapAI = async (userInput, chatHistory = []) => {
             address: bestMatch.display_name
           },
           action: { type: 'FLY_TO', value: { lat: parseFloat(bestMatch.lat), lng: parseFloat(bestMatch.lon) } },
-          suggestions: [`Chỉ đường tới đây`, `Thông tin về nơi này`]
+          suggestions: [`Chỉ đường tới ${shortName}`, `Thông tin về ${shortName}`]
         };
       }
 
@@ -156,7 +172,7 @@ export const askMapAI = async (userInput, chatHistory = []) => {
         }
 
         return {
-          message: `Dạ, em đã chuẩn bị tuyến đường tới **${destinationData.name}** cho mình rồi ạ. Bạn nhấn 'Bắt đầu' để đi nhé!`,
+          message: `MapAI đã chuẩn bị tuyến đường tới **${destinationData.name}** cho mình rồi ạ. Bạn nhấn 'Bắt đầu' để đi nhé!`,
           action: { 
             type: 'SET_DIRECTION', 
             destination: destinationData 
@@ -167,8 +183,8 @@ export const askMapAI = async (userInput, chatHistory = []) => {
     }
 
     return { 
-      message: "Xin lỗi, em gặp chút trục trặc khi xử lý yêu cầu.", 
-      suggestions: ["Thử lại", "Hỏi về Đà Nẵng"] 
+      message: "Xin lỗi, MapAI gặp chút trục trặc khi xử lý yêu cầu.", 
+      suggestions: ["Thử lại"] 
     };
 
   } catch (error) {

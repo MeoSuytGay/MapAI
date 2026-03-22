@@ -288,6 +288,16 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
 
   const handleRouteSelected = async (origin, destination, mode = 'driving') => {
     if (!map.current) return;
+    
+    // Xóa tuyến đường cũ và các marker liên quan trước khi tìm mới
+    clearRoute();
+    
+    // Tắt marker tìm kiếm/vị trí đơn lẻ nếu đang tìm đường
+    if (searchMarkerRef.current) {
+      searchMarkerRef.current.remove();
+      searchMarkerRef.current = null;
+    }
+
     const loadingToastId = addToast(`Đang tìm đường...`, "loading", Infinity);
     try {
       const serverPrefix = mode === 'driving' ? 'routed-car' : mode === 'bicycle' ? 'routed-bike' : 'routed-foot';
@@ -297,9 +307,42 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
       if (data.code !== 'Ok') throw new Error('Không tìm thấy tuyến đường.');
       
       const route = data.routes[0];
-      if (map.current.getSource('route')) map.current.removeSource('route');
+      
+      // Thêm Line Route
       map.current.addSource('route', { type: 'geojson', data: { type: 'Feature', geometry: route.geometry } });
       map.current.addLayer({ id: 'route-line', type: 'line', source: 'route', paint: { 'line-color': '#3b82f6', 'line-width': 6 } });
+
+      // Thêm Marker Điểm Đi
+      const originEl = document.createElement('div');
+      originEl.className = 'flex items-center justify-center';
+      originEl.innerHTML = `
+        <div class="relative flex items-center justify-center">
+          <div class="absolute w-8 h-8 bg-blue-500/30 rounded-full animate-ping"></div>
+          <div class="w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow-lg flex items-center justify-center">
+            <div class="w-1.5 h-1.5 bg-white rounded-full"></div>
+          </div>
+        </div>
+      `;
+      const originMarker = new maplibregl.Marker({ element: originEl })
+        .setLngLat([origin.lng, origin.lat])
+        .addTo(map.current);
+      routeMarkersRef.current.push(originMarker);
+
+      // Thêm Marker Điểm Đến
+      const destEl = document.createElement('div');
+      destEl.className = 'flex items-center justify-center';
+      destEl.innerHTML = `
+        <div class="relative flex items-center justify-center">
+          <div class="absolute w-8 h-8 bg-rose-500/30 rounded-full animate-ping"></div>
+          <div class="w-4 h-4 bg-rose-600 rounded-full border-2 border-white shadow-lg flex items-center justify-center">
+            <div class="w-1.5 h-1.5 bg-white rounded-full"></div>
+          </div>
+        </div>
+      `;
+      const destMarker = new maplibregl.Marker({ element: destEl })
+        .setLngLat([destination.lng, destination.lat])
+        .addTo(map.current);
+      routeMarkersRef.current.push(destMarker);
 
       const bounds = route.geometry.coordinates.reduce((acc, coord) => acc.extend(coord), new maplibregl.LngLatBounds(route.geometry.coordinates[0], route.geometry.coordinates[0]));
       map.current.fitBounds(bounds, { padding: 100, duration: 1000 });
@@ -319,6 +362,20 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
     };
     return () => { delete window.showPlaceDetails; delete window.startDirectionsFromPopup; };
   }, [handleShowDetails, setIsDirectionsMode]);
+
+  // Lắng nghe sự kiện từ AI để thiết lập điểm đến
+  useEffect(() => {
+    const handleAISetDestination = (e) => {
+      const destination = e.detail;
+      if (destination) {
+        setInitialDestination(destination);
+        setIsDirectionsMode(true);
+      }
+    };
+
+    window.addEventListener('ai-set-destination', handleAISetDestination);
+    return () => window.removeEventListener('ai-set-destination', handleAISetDestination);
+  }, [setIsDirectionsMode]);
 
   useEffect(() => {
     if (isDirectionsMode && !initialOrigin && !isNavigating) {

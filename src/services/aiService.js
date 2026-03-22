@@ -138,9 +138,29 @@ export const askMapAI = async (userInput, chatHistory = []) => {
 
       // Chỉ đường (Direction)
       if (type === 'Direction') {
+        const query = route.target_location || userInput;
+        const results = await searchNominatim(query);
+        let destinationData = { name: query };
+
+        if (results.length > 0) {
+          // AI chọn kết quả đúng nhất cho điểm đến
+          const context = `Người dùng muốn đi đến: "${query}". \nDanh sách kết quả: ${JSON.stringify(results.map((r, i) => ({ index: i, name: r.display_name })))}`;
+          const picker = await callGemini(prompts.LOCATION_PICKER_SYSTEM_PROMPT, prompts.LOCATION_PICKER_SCHEMA, context);
+          const bestMatch = results[picker.selected_index] || results[0];
+          
+          destinationData = {
+            name: bestMatch.display_name,
+            lat: parseFloat(bestMatch.lat),
+            lng: parseFloat(bestMatch.lon)
+          };
+        }
+
         return {
-          message: `Dạ, em đã chuẩn bị tuyến đường tới **${route.target_location}** cho mình rồi ạ. Bạn nhấn 'Bắt đầu' để đi nhé!`,
-          action: { type: 'SET_DIRECTION', destination: route.target_location },
+          message: `Dạ, em đã chuẩn bị tuyến đường tới **${destinationData.name}** cho mình rồi ạ. Bạn nhấn 'Bắt đầu' để đi nhé!`,
+          action: { 
+            type: 'SET_DIRECTION', 
+            destination: destinationData 
+          },
           suggestions: ["Chọn phương tiện đi lại", "Xem địa điểm dọc đường"]
         };
       }

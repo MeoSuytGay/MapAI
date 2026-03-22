@@ -5,9 +5,11 @@ import { useNavigate } from 'react-router-dom';
 import MapLibreView from '../components/MapLibreView';
 import SearchBar from '../components/SearchBar';
 import { askMapAI } from '../services/aiService';
+import { useToast } from '../context/ToastContext';
 
 const MapPage = () => {
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [input, setInput] = useState('');
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const [isDirectionsMode, setIsDirectionsMode] = useState(false);
@@ -41,7 +43,8 @@ const MapPage = () => {
         zoom: 17,
         pitch: 60,
         essential: true,
-        duration: 3000
+        duration: 3000,
+        title: loc.name // Thêm title để hiện Marker
       });
       // Tự động mở chi tiết nếu có
       if (window.showPlaceDetails) {
@@ -88,8 +91,18 @@ const MapPage = () => {
         // 1. Chuyển chế độ 2D/3D
         if (type === 'SWITCH_VIEW') {
           if (mapRef.current) {
-            const pitch = value === '3D' ? 60 : 0;
-            mapRef.current.easeTo({ pitch, duration: 1000 });
+            const currentPitch = mapRef.current.getPitch();
+            const targetPitch = value === '3D' ? 60 : 0;
+            
+            if (Math.abs(currentPitch - targetPitch) < 5) {
+              addToast(`Bản đồ đang đúng theo yêu cầu của bạn (${value})`, "info");
+            } else {
+              mapRef.current.easeTo({ 
+                pitch: targetPitch, 
+                duration: 1000,
+                essential: true 
+              });
+            }
           }
         }
 

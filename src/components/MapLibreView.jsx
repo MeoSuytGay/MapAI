@@ -41,6 +41,7 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
   const [mapError, setMapError] = useState(null);
   const [selectedPlace, setSelectedPlace] = useState(null);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [isUserLocating, setIsUserLocating] = useState(false);
   const [routeInfo, setRouteInfo] = useState(null);
   const [initialOrigin, setInitialOrigin] = useState(null);
   const [initialDestination, setInitialDestination] = useState(null);
@@ -89,14 +90,6 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
     searchMarkerRef.current = new maplibregl.Marker({ element: el })
       .setLngLat([lng, lat])
       .addTo(map.current);
-
-    if (title) {
-      const popup = new maplibregl.Popup({ 
-        offset: 30, closeButton: true, closeOnClick: false, className: 'custom-search-popup'
-      })
-      .setHTML(`<div class="px-3 py-1 bg-slate-900 text-white text-[10px] font-bold rounded-lg border border-white/10 shadow-2xl">${title}</div>`);
-      searchMarkerRef.current.setPopup(popup).togglePopup();
-    }
   }, []);
 
   const handleMoveCamera = useCallback((direction) => {
@@ -128,23 +121,40 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
     
     const steps = routeInfo.legs[0].steps;
     const currentStep = steps[index];
-    const nextStep = steps[index + 1];
     
+    // Kiểm tra tính hợp lệ của vị trí
+    if (!currentStep.maneuver || !currentStep.maneuver.location || currentStep.maneuver.location.length < 2) {
+      console.warn("Invalid step location at index:", index);
+      return;
+    }
+
+    const nextStep = steps[index + 1];
     const lon1 = currentStep.maneuver.location[0];
     const lat1 = currentStep.maneuver.location[1];
     
     let targetBearing = map.current.getBearing();
     
-    if (nextStep) {
+    if (nextStep && nextStep.maneuver && nextStep.maneuver.location && nextStep.maneuver.location.length >= 2) {
       const lon2 = nextStep.maneuver.location[0];
       const lat2 = nextStep.maneuver.location[1];
-      const y = Math.sin((lon2 - lon1) * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180);
-      const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
-                Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos((lon2 - lon1) * Math.PI / 180);
-      targetBearing = Math.atan2(y, x) * 180 / Math.PI;
+      
+      // Chỉ tính toán bearing nếu tọa độ khác nhau để tránh lỗi Math.atan2
+      if (lon1 !== lon2 || lat1 !== lat2) {
+        const y = Math.sin((lon2 - lon1) * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180);
+        const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180) -
+                  Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos((lon2 - lon1) * Math.PI / 180);
+        targetBearing = Math.atan2(y, x) * 180 / Math.PI;
+      }
     }
 
-    map.current.flyTo({ center: [lon1, lat1], zoom: 18, pitch: 75, bearing: targetBearing, duration: 1500, essential: true });
+    map.current.flyTo({ 
+      center: [lon1, lat1], 
+      zoom: 18, 
+      pitch: 75, 
+      bearing: isFinite(targetBearing) ? targetBearing : map.current.getBearing(), 
+      duration: 1500, 
+      essential: true 
+    });
   }, [routeInfo]);
 
   const handleStartNavigation = useCallback(() => {
@@ -209,26 +219,45 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
   }, [searchParams, isLoaded, addSearchMarker]);
 
   const handleLocateUser = useCallback(() => {
+    // Nếu đang có marker vị trí thì xóa đi (Toggle OFF)
+    if (userMarkerRef.current) {
+      userMarkerRef.current.remove();
+      userMarkerRef.current = null;
+      setIsUserLocating(false);
+      sessionStorage.removeItem('user_location');
+      addToast("Đã ẩn vị trí của bạn.", "info");
+      return;
+    }
+
     if (!navigator.geolocation) {
       addToast("Trình duyệt không hỗ trợ định vị.", "error");
       return;
     }
+
     const loadingId = addToast("Đang xác định vị trí của bạn...", "loading", Infinity);
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { longitude, latitude } = position.coords;
         removeToast(loadingId);
         if (!map.current) return;
+        
         map.current.flyTo({ center: [longitude, latitude], zoom: 17, essential: true, duration: 2000 });
-        if (userMarkerRef.current) userMarkerRef.current.remove();
+        
         const el = document.createElement('div');
         el.className = 'relative flex items-center justify-center';
         el.innerHTML = `<div class="absolute w-10 h-10 bg-blue-500/20 rounded-full animate-ping"></div><div class="relative w-5 h-5 bg-blue-600 rounded-full border-4 border-white shadow-lg"></div>`;
+        
         userMarkerRef.current = new maplibregl.Marker({ element: el }).setLngLat([longitude, latitude]).addTo(map.current);
+        
+        setIsUserLocating(true);
         sessionStorage.setItem('user_location', JSON.stringify({ name: "Vị trí của tôi", lng: longitude, lat: latitude, timestamp: Date.now() }));
         addToast("Đã định vị thành công!", "success");
       },
-      (error) => { removeToast(loadingId); addToast("Không thể lấy vị trí.", "error"); },
+      (error) => { 
+        removeToast(loadingId); 
+        addToast("Không thể lấy vị trí.", "error"); 
+        setIsUserLocating(false);
+      },
       { enableHighAccuracy: true, timeout: 10000 }
     );
   }, [addToast, removeToast]);
@@ -417,7 +446,7 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
       <MapStatusOverlays isLoaded={isLoaded} mapError={mapError} isDetailLoading={isDetailLoading} />
 
       <div className="absolute bottom-10 right-10 z-20 flex flex-col gap-3 items-end">
-        <NavigationControls map={map.current} onLocate={handleLocateUser} bearing={bearing} />
+        <NavigationControls map={map.current} onLocate={handleLocateUser} bearing={bearing} isUserLocating={isUserLocating} />
         <ViewToggle is3D={is3D} onToggle={() => handleToggleView()} />
       </div>
 

@@ -36,7 +36,8 @@ const DirectionsPanel = ({
     if (type === 'arrive') return <Flag size={22} className="text-rose-500" />;
     if (type === 'depart') return <MapPin size={22} className="text-emerald-500" />;
     
-    switch (modifier) {
+    const mod = modifier?.toLowerCase() || '';
+    switch (mod) {
       case 'right': 
       case 'slight right': 
       case 'sharp right': return <CornerUpRight size={24} className="text-blue-400" />;
@@ -50,6 +51,7 @@ const DirectionsPanel = ({
   };
 
   const getStepAction = (step) => {
+    if (!step?.maneuver) return "Tiếp tục";
     const type = step.maneuver.type;
     const modifier = step.maneuver.modifier;
     
@@ -70,9 +72,13 @@ const DirectionsPanel = ({
   };
 
   const getStepTarget = (step) => {
+    if (!step?.maneuver) return "theo hướng dẫn trên bản đồ";
     if (step.maneuver.type === 'arrive') return "Kết thúc hành trình tại đây";
     if (step.name && step.name !== "") return `vào đường ${step.name}`;
-    if (step.maneuver.instruction.includes('vào')) return `vào ${step.maneuver.instruction.split('vào')[1]}`;
+    if (step.maneuver.instruction && step.maneuver.instruction.includes('vào')) {
+      const parts = step.maneuver.instruction.split('vào');
+      return parts.length > 1 ? `vào ${parts[1]}` : "vào đường mới";
+    }
     return "theo hướng dẫn trên bản đồ";
   };
 
@@ -140,9 +146,9 @@ const DirectionsPanel = ({
       {/* Bảng chỉ đường CHÍNH (Chi tiết khi chưa đi, Giản đơn khi đang đi) */}
       <motion.div 
         animate={{ 
-          width: isNavigating ? '300px' : '410px',
-          height: isNavigating ? '90px' : 'auto',
-          maxHeight: isNavigating ? '90px' : 'calc(100vh - 120px)',
+          width: isNavigating ? '420px' : '410px',
+          height: isNavigating ? '110px' : 'auto',
+          maxHeight: isNavigating ? '110px' : 'calc(100vh - 120px)',
           x: isNavigating ? 0 : 0
         }}
         className="absolute top-24 left-6 bg-slate-950/98 backdrop-blur-3xl border border-white/10 z-[100] flex flex-col shadow-[0_30px_60px_rgba(0,0,0,0.8)] rounded-[2rem] overflow-hidden transition-all duration-500"
@@ -285,7 +291,7 @@ const DirectionsPanel = ({
                   {currentStep ? `${formatDistance(currentStep.distance).val} ${formatDistance(currentStep.distance).unit}` : '-- m'}
                 </span>
                 <div className="w-1 h-1 rounded-full bg-white/20"></div>
-                <span className="text-[11px] font-medium text-white/60 truncate italic">
+                <span className="text-[11px] font-medium text-white/60 italic leading-tight">
                   {currentStep ? getStepTarget(currentStep) : 'Vui lòng chờ...'}
                 </span>
               </div>

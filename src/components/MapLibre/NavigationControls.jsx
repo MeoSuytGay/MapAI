@@ -1,7 +1,7 @@
 import React from 'react';
 import { ChevronUp, RotateCcw, LocateFixed, Compass, RotateCw, ChevronDown } from 'lucide-react';
 
-const NavigationControls = ({ map, onLocate, bearing }) => {
+const NavigationControls = ({ map, onLocate, bearing, isUserLocating }) => {
   if (!map) return null;
 
   return (
@@ -22,8 +22,8 @@ const NavigationControls = ({ map, onLocate, bearing }) => {
       
       <button 
         onClick={onLocate} 
-        className="p-3 text-emerald-400 hover:bg-white/5 rounded-full transition-all"
-        title="Vị trí của tôi"
+        className={`p-3 rounded-full transition-all ${isUserLocating ? 'text-blue-500 bg-blue-500/10' : 'text-emerald-400 hover:bg-white/5'}`}
+        title={isUserLocating ? "Xóa vị trí" : "Vị trí của tôi"}
       >
         <LocateFixed size={20} />
       </button>

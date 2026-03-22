@@ -13,6 +13,7 @@ import DirectionsPanel from './DirectionsPanel';
 import NavigationControls from './MapLibre/NavigationControls';
 import ViewToggle from './MapLibre/ViewToggle';
 import MapStatusOverlays from './MapLibre/MapStatusOverlays';
+import LocationRequestPopup from './MapLibre/LocationRequestPopup';
 
 // Import Context
 import { useToast } from '../context/ToastContext';
@@ -42,6 +43,7 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
   const [selectedPlace, setSelectedPlace] = useState(null);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [isUserLocating, setIsUserLocating] = useState(false);
+  const [showLocationPopup, setShowLocationPopup] = useState(false);
   const [routeInfo, setRouteInfo] = useState(null);
   const [initialOrigin, setInitialOrigin] = useState(null);
   const [initialDestination, setInitialDestination] = useState(null);
@@ -218,13 +220,22 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
     }
   }, [searchParams, isLoaded, addSearchMarker]);
 
-  const handleLocateUser = useCallback(() => {
+  const handleLocateUser = useCallback((forceUpdateInitialOrigin = false) => {
+    // Đảm bảo forceUpdateInitialOrigin là boolean (vì nếu gọi từ onClick nó sẽ nhận Event object)
+    const isForce = forceUpdateInitialOrigin === true;
+
     // Nếu đang có marker vị trí thì xóa đi (Toggle OFF)
-    if (userMarkerRef.current) {
+    if (userMarkerRef.current && !isForce) {
       userMarkerRef.current.remove();
       userMarkerRef.current = null;
       setIsUserLocating(false);
       sessionStorage.removeItem('user_location');
+      
+      // Nếu initialOrigin đang là "Vị trí của tôi" thì xóa luôn để đồng bộ Direction Panel
+      if (initialOrigin?.name === "Vị trí của tôi") {
+        setInitialOrigin(null);
+      }
+
       addToast("Đã ẩn vị trí của bạn.", "info");
       return;
     }
@@ -247,10 +258,18 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
         el.className = 'relative flex items-center justify-center';
         el.innerHTML = `<div class="absolute w-10 h-10 bg-blue-500/20 rounded-full animate-ping"></div><div class="relative w-5 h-5 bg-blue-600 rounded-full border-4 border-white shadow-lg"></div>`;
         
+        if (userMarkerRef.current) userMarkerRef.current.remove();
         userMarkerRef.current = new maplibregl.Marker({ element: el }).setLngLat([longitude, latitude]).addTo(map.current);
         
+        const locData = { name: "Vị trí của tôi", lng: longitude, lat: latitude, timestamp: Date.now() };
         setIsUserLocating(true);
-        sessionStorage.setItem('user_location', JSON.stringify({ name: "Vị trí của tôi", lng: longitude, lat: latitude, timestamp: Date.now() }));
+        sessionStorage.setItem('user_location', JSON.stringify(locData));
+        
+        // Nếu được yêu cầu cập nhật initialOrigin (khi tìm đường)
+        if (forceUpdateInitialOrigin) {
+          setInitialOrigin(locData);
+        }
+
         addToast("Đã định vị thành công!", "success");
       },
       (error) => { 
@@ -404,15 +423,18 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
 
     window.addEventListener('ai-set-destination', handleAISetDestination);
     return () => window.removeEventListener('ai-set-destination', handleAISetDestination);
-  }, [setIsDirectionsMode]);
+  }, [setIsDirectionsMode, setInitialDestination]);
 
   useEffect(() => {
     if (isDirectionsMode && !initialOrigin && !isNavigating) {
       const savedLoc = sessionStorage.getItem('user_location');
-      if (savedLoc) setInitialOrigin(JSON.parse(savedLoc));
-      else handleLocateUser();
+      if (savedLoc) {
+        setInitialOrigin(JSON.parse(savedLoc));
+      } else if (!isUserLocating) {
+        setShowLocationPopup(true);
+      }
     }
-  }, [isDirectionsMode, initialOrigin, isNavigating, handleLocateUser]);
+  }, [isDirectionsMode, initialOrigin, isNavigating, isUserLocating]);
 
   return (
     <div className="relative w-full h-full bg-[#0f172a] overflow-hidden">
@@ -449,6 +471,18 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
         <NavigationControls map={map.current} onLocate={handleLocateUser} bearing={bearing} isUserLocating={isUserLocating} />
         <ViewToggle is3D={is3D} onToggle={() => handleToggleView()} />
       </div>
+
+      <LocationRequestPopup 
+        isOpen={showLocationPopup}
+        onConfirm={() => {
+          setShowLocationPopup(false);
+          handleLocateUser(true); // Tham số true để báo cập nhật initialOrigin
+        }}
+        onCancel={() => {
+          setShowLocationPopup(false);
+          addToast("Bạn đã từ chối chia sẻ vị trí. Vui lòng tự chọn điểm xuất phát.", "info");
+        }}
+      />
 
       <style>{`
         .maplibregl-popup-content { background: transparent !important; border: none !important; box-shadow: none !important; padding: 0 !important; }

@@ -91,18 +91,7 @@ const MapPage = () => {
         // 1. Chuyển chế độ 2D/3D
         if (type === 'SWITCH_VIEW') {
           if (mapRef.current) {
-            const currentPitch = mapRef.current.getPitch();
-            const targetPitch = value === '3D' ? 60 : 0;
-            
-            if (Math.abs(currentPitch - targetPitch) < 5) {
-              addToast(`Bản đồ đang đúng theo yêu cầu của bạn (${value})`, "info");
-            } else {
-              mapRef.current.easeTo({ 
-                pitch: targetPitch, 
-                duration: 1000,
-                essential: true 
-              });
-            }
+            mapRef.current.toggleView(value);
           }
         }
 

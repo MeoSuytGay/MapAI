@@ -31,9 +31,10 @@ const SearchBar = () => {
 
     setIsLoading(true);
     try {
-      // Sử dụng Nominatim API (Free geocoding)
+      // Giới hạn tìm kiếm trong khu vực Đà Nẵng
+      const viewbox = '107.81,16.22,108.49,15.88';
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}&limit=5&addressdetails=1`
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}&limit=5&addressdetails=1&viewbox=${viewbox}&bounded=1&countrycodes=vn`
       );
       if (!response.ok) throw new Error("Lỗi kết nối tìm kiếm.");
       const data = await response.json();

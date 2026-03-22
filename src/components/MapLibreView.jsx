@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useImperativeHandle } from 'react';
 import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { Layers, Box, RotateCw, RotateCcw, ChevronUp, ChevronDown, Compass, X, Star, MapPin, Phone, Globe, Clock, Image as ImageIcon, ExternalLink, ChevronLeft, ChevronRight, MessageSquare, Navigation, LocateFixed } from 'lucide-react';
@@ -21,10 +21,21 @@ const CATEGORY_COLORS = {
   'default': '#8395a7'
 };
 
-const MapLibreView = ({ isDirectionsMode, setIsDirectionsMode, isNavigating, setIsNavigating }) => {
+const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigating, setIsNavigating }) => {
   const [searchParams] = useSearchParams();
   const mapContainer = useRef(null);
   const map = useRef(null);
+
+  // Cung cấp các phương thức điều khiển bản đồ cho component cha (MapPage)
+  useImperativeHandle(mapRef, () => ({
+    flyTo: (options) => {
+      if (map.current) {
+        map.current.flyTo(options);
+      }
+    },
+    getMap: () => map.current
+  }));
+
   const markersRef = useRef({}); 
   const routeMarkersRef = useRef([]);
   const userMarkerRef = useRef(null);
@@ -41,6 +52,23 @@ const MapLibreView = ({ isDirectionsMode, setIsDirectionsMode, isNavigating, set
   const [initialDestination, setInitialDestination] = useState(null);
 
   const { addToast, removeToast } = useToast();
+
+  // Tự động di chuyển camera khi URL có tọa độ (từ SearchBar)
+  useEffect(() => {
+    const lat = searchParams.get('lat');
+    const lng = searchParams.get('lng');
+    
+    if (lat && lng && map.current) {
+      map.current.flyTo({
+        center: [parseFloat(lng), parseFloat(lat)],
+        zoom: 16,
+        essential: true,
+        duration: 3000
+      });
+      
+      // Có thể thêm marker tạm thời tại đây nếu cần
+    }
+  }, [searchParams, isLoaded]);
 
   const handleLocateUser = useCallback(() => {
     if (!navigator.geolocation) {

@@ -119,7 +119,7 @@ const MapPage = () => {
           // Sử dụng Custom Event để báo cho DirectionsPanel biết cần set điểm đến
           setTimeout(() => {
             window.dispatchEvent(new CustomEvent('ai-set-destination', { 
-              detail: { name: destination } 
+              detail: destination 
             }));
           }, 500);
         }

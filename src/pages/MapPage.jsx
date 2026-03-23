@@ -1,24 +1,30 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Send, User, Sparkles, Search, ChevronRight, ChevronLeft, MessageSquare, Navigation } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { ArrowLeft, Send, User, Sparkles, Search, ChevronRight, ChevronLeft, MessageSquare, Navigation, MapPin, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import MapLibreView from '../components/MapLibreView';
 import SearchBar from '../components/SearchBar';
+import { askMapAI } from '../services/aiService';
+import { useToast } from '../context/ToastContext';
 
 const MapPage = () => {
   const navigate = useNavigate();
+  const { addToast } = useToast();
   const [input, setInput] = useState('');
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const [isDirectionsMode, setIsDirectionsMode] = useState(false);
-  const [isNavigating, setIsNavigating] = useState(false); // Trạng thái dẫn đường tập trung
+  const [isNavigating, setIsNavigating] = useState(false);
+  const [isAiLoading, setIsAiLoading] = useState(false);
   const chatEndRef = useRef(null);
+  const mapRef = useRef(null);
 
   const [messages, setMessages] = useState([
     {
-      id: 1,
+      id: crypto.randomUUID(),
       type: 'ai',
-      text: 'Chào mừng bạn đến với MapAI Đà Nẵng! Tôi có thể giúp gì cho bạn hôm nay?',
-      time: '10:00 AM'
+      text: 'Chào bạn! Tôi là trợ lý MapAI. Bạn muốn khám phá địa điểm nào tại Đà Nẵng hôm nay? ✨',
+      time: '10:00 AM',
+      suggestions: ['Những quán cafe view biển đẹp?', 'Đường đi tới Bán đảo Sơn Trà?', 'Món ngon đặc sản Đà Nẵng?']
     }
   ]);
 
@@ -28,31 +34,102 @@ const MapPage = () => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, isAiLoading]);
 
-  const handleSend = (e) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+  const handleFlyTo = (loc) => {
+    if (mapRef.current && loc) {
+      mapRef.current.flyTo({
+        center: [loc.lng, loc.lat],
+        zoom: 17,
+        pitch: 60,
+        essential: true,
+        duration: 3000,
+        title: loc.name // Thêm title để hiện Marker
+      });
+      // Tự động mở chi tiết nếu có
+      if (window.showPlaceDetails) {
+        window.showPlaceDetails(loc.name, loc.lng, loc.lat);
+      }
+    }
+  };
+
+  const handleSend = async (e, textOverride = null) => {
+    if (e) e.preventDefault();
+    const messageText = textOverride || input;
+    if (!messageText.trim() || isAiLoading) return;
     
-    const newMessage = {
-      id: messages.length + 1,
+    const userMsg = {
+      id: crypto.randomUUID(),
       type: 'user',
-      text: input,
+      text: messageText,
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
     
-    setMessages([...messages, newMessage]);
+    setMessages(prev => [...prev, userMsg]);
     setInput('');
-    
-    setTimeout(() => {
-      const aiResponse = {
-        id: messages.length + 2,
+    setIsAiLoading(true);
+
+    try {
+      // Gọi Gemini AI
+      const response = await askMapAI(messageText, messages.slice(-5));
+      
+      const aiMsg = {
+        id: crypto.randomUUID(),
         type: 'ai',
-        text: 'Đang tìm kiếm thông tin về "' + input + '" tại Đà Nẵng...',
+        text: response.message,
+        location: response.location,
+        suggestions: response.suggestions,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
-      setMessages(prev => [...prev, aiResponse]);
-    }, 1000);
+      
+      setMessages(prev => [...prev, aiMsg]);
+
+      // XỬ LÝ CÁC ACTION TỪ AI
+      if (response.action) {
+        const { type, value, destination } = response.action;
+
+        // 1. Chuyển chế độ 2D/3D
+        if (type === 'SWITCH_VIEW') {
+          if (mapRef.current) {
+            mapRef.current.toggleView(value);
+          }
+        }
+
+        // 2. Bay đến địa điểm (Location)
+        if (type === 'FLY_TO' && value) {
+          setTimeout(() => {
+            handleFlyTo({ ...value, name: response.location?.name || "Địa điểm tìm thấy" });
+          }, 1000);
+        }
+
+        // 3. Thiết lập chỉ đường (Direction)
+        if (type === 'SET_DIRECTION' && destination) {
+          setIsDirectionsMode(true);
+          // Sử dụng Custom Event để báo cho DirectionsPanel biết cần set điểm đến
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('ai-set-destination', { 
+              detail: destination 
+            }));
+          }, 500);
+        }
+      } else if (response.location) {
+        // Fallback cho logic cũ nếu không có action nhưng có location
+        setTimeout(() => handleFlyTo(response.location), 1000);
+      }
+    } catch (error) {
+      const errorMessage = error.message === 'QUOTA_EXCEEDED' 
+        ? '🤖 Trợ lý AI đang tạm nghỉ chút (hết giới hạn miễn phí). Bạn vui lòng đợi 30 giây rồi hỏi tiếp nhé! 🙏'
+        : 'Rất tiếc, tôi đang gặp chút sự cố kỹ thuật. Bạn thử hỏi lại nhé! 🛠️';
+
+      setMessages(prev => [...prev, {
+        id: crypto.randomUUID(),
+        type: 'ai',
+        text: errorMessage,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      }]);
+    } finally {
+      setIsAiLoading(false);
+    }
   };
 
   return (
@@ -61,44 +138,29 @@ const MapPage = () => {
       {/* --- PHẦN BẢN ĐỒ --- */}
       <motion.div 
         animate={{ width: isNavigating ? 'calc(100% - 80px)' : (isChatCollapsed ? '100%' : '70%') }}
-        transition={{ type: 'spring', damping: 20, stiffness: 100 }}
         className="relative h-full bg-[#121212] overflow-hidden"
       >
-        {/* Toolbar (Ẩn khi đang dẫn đường) */}
         {!isNavigating && (
           <div className="absolute top-6 left-6 z-10 flex items-center gap-4">
-            <motion.button 
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={() => navigate('/')}
-              className="p-3 bg-white/10 backdrop-blur-md rounded-full border border-white/10 hover:bg-white/20 transition-all shadow-xl group"
-            >
+            <motion.button onClick={() => navigate('/')} className="p-3 bg-white/10 backdrop-blur-md rounded-full border border-white/10 hover:bg-white/20 transition-all shadow-xl group">
               <ArrowLeft className="w-6 h-6 text-white group-hover:-translate-x-1 transition-transform" />
             </motion.button>
-            
             <SearchBar />
-
             {!isDirectionsMode && (
-              <motion.button
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                onClick={() => setIsDirectionsMode(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-950 rounded-full shadow-xl font-black text-[9px] uppercase tracking-[0.15em] transition-all active:scale-95 border border-white/20"
-              >
-                <Navigation size={14} className="text-blue-600" />
-                Chỉ đường
+              <motion.button onClick={() => setIsDirectionsMode(true)} className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-950 rounded-full shadow-xl font-black text-[9px] uppercase tracking-[0.15em] transition-all border border-white/20">
+                <Navigation size={14} className="text-blue-600" /> Chỉ đường
               </motion.button>
             )}
           </div>
         )}
 
         <MapLibreView 
+          mapRef={mapRef}
           isDirectionsMode={isDirectionsMode} 
           setIsDirectionsMode={setIsDirectionsMode}
           isNavigating={isNavigating}
           setIsNavigating={setIsNavigating} 
         />
-        
         <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_100px_rgba(0,0,0,0.8)]"></div>
       </motion.div>
 
@@ -113,105 +175,115 @@ const MapPage = () => {
         </button>
       )}
 
-      {/* --- PHẦN CHAT UI / MINIMIZED RIGHT PANEL --- */}
+      {/* --- PHẦN CHAT UI --- */}
       <motion.div 
         animate={{ 
           width: isNavigating ? '80px' : (isChatCollapsed ? '0%' : '30%'),
           opacity: (isChatCollapsed && !isNavigating) ? 0 : 1,
           x: (isChatCollapsed && !isNavigating) ? 100 : 0
         }}
-        transition={{ type: 'spring', damping: 20, stiffness: 100 }}
-        className="h-full flex flex-col bg-[#0f0f12] relative border-l border-white/5 overflow-hidden"
+        className="h-full flex flex-col bg-[#0f0f12] relative border-l border-white/5 overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)]"
       >
         {isNavigating ? (
-          /* --- MINIMIZED PANEL (Khi đang dẫn đường) --- */
           <div className="flex flex-col items-center py-8 gap-8 h-full bg-gradient-to-b from-blue-600/10 to-transparent">
             <div className="p-3 bg-blue-600 rounded-2xl shadow-lg shadow-blue-600/40 animate-pulse">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
-            
             <div className="flex-1 flex flex-col gap-6 items-center">
               <div className="flex flex-col items-center gap-1">
                 <div className="w-1 h-12 bg-gradient-to-b from-blue-600 to-transparent rounded-full"></div>
                 <Navigation size={20} className="text-blue-500" />
               </div>
-              
               <div className="writing-vertical text-[10px] font-black uppercase tracking-[0.3em] text-white/20 whitespace-nowrap rotate-180">
                 MapAI Focus Mode
               </div>
             </div>
-
-            <button 
-              onClick={() => setIsNavigating(false)}
-              className="p-4 bg-white/5 hover:bg-white/10 rounded-2xl text-white/40 hover:text-rose-500 transition-all border border-white/5"
-            >
+            <button onClick={() => setIsNavigating(false)} className="p-4 bg-white/5 hover:bg-white/10 rounded-2xl text-white/40 hover:text-rose-500 transition-all border border-white/5">
               <ArrowLeft size={20} />
             </button>
           </div>
         ) : (
-          /* --- CHAT FULL UI --- */
           <>
             <header className="p-6 border-b border-white/5 bg-white/[0.02] backdrop-blur-xl shrink-0">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-lg shadow-lg">
-                  <Sparkles className="w-5 h-5 text-white" />
+                <div className="p-2.5 bg-gradient-to-tr from-blue-600 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/20">
+                  <Sparkles className="w-5 h-5 text-white animate-pulse" />
                 </div>
                 <div>
-                  <h1 className="text-xl font-bold text-white tracking-tight">MapAI Assistant</h1>
-                  <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                    <p className="text-xs text-gray-400 font-medium">Hỏi để khám phá Đà Nẵng</p>
-                  </div>
+                  <h1 className="text-lg font-black text-white tracking-tight uppercase italic">MapAI Assistant</h1>
+                  <p className="text-[10px] text-blue-400 font-black uppercase tracking-widest flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping"></span>
+                    AI Online & Ready
+                  </p>
                 </div>
               </div>
             </header>
 
-            <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin">
+            <div className="flex-1 overflow-y-auto p-6 space-y-8 custom-scrollbar">
               <AnimatePresence initial={false}>
                 {messages.map((msg) => (
-                  <motion.div
-                    key={msg.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className={`flex w-full ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div className={`flex max-w-[85%] gap-3 ${msg.type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                      <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                        msg.type === 'user' ? 'bg-blue-600' : 'bg-white/10'
-                      }`}>
-                        {msg.type === 'user' ? <User className="w-4 h-4" /> : <Sparkles className="w-4 h-4 text-blue-400" />}
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <div className={`px-4 py-3 rounded-2xl text-sm ${
-                          msg.type === 'user' ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white/5 border border-white/5 text-gray-200 rounded-tl-none'
+                  <motion.div key={msg.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className={`flex w-full ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`flex flex-col max-w-[90%] gap-3 ${msg.type === 'user' ? 'items-end' : 'items-start'}`}>
+                      <div className={`flex gap-3 items-end ${msg.type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center border ${msg.type === 'user' ? 'bg-blue-600 border-blue-400/50' : 'bg-white/5 border-white/10'}`}>
+                          {msg.type === 'user' ? <User size={14} /> : <Sparkles size={14} className="text-blue-400" />}
+                        </div>
+                        <div className={`px-5 py-4 rounded-3xl text-sm leading-relaxed shadow-xl ${
+                          msg.type === 'user' ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-white/[0.03] border border-white/10 text-gray-200 rounded-bl-none backdrop-blur-md'
                         }`}>
                           {msg.text}
+                          {msg.location && msg.location.address && (
+                            <motion.button 
+                              whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                              onClick={() => handleFlyTo(msg.location)}
+                              className="mt-4 w-full flex items-center justify-center gap-2 py-2.5 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/30 rounded-xl text-blue-400 text-[10px] font-black uppercase tracking-widest transition-all"
+                            >
+                              <MapPin size={12} /> Xem Trên Bản Đồ
+                            </motion.button>
+                          )}
                         </div>
-                        <span className="text-[10px] text-gray-500 px-1">{msg.time}</span>
                       </div>
+                      {msg.type === 'ai' && msg.suggestions && msg.id === messages[messages.length-1].id && !isAiLoading && (
+                        <div className="flex flex-wrap gap-2 mt-2 ml-11">
+                          {msg.suggestions.map((s, i) => (
+                            <button 
+                              key={i} onClick={() => handleSend(null, s)}
+                              className="px-3 py-1.5 bg-white/5 hover:bg-blue-500/20 border border-white/10 hover:border-blue-500/30 rounded-full text-[10px] text-gray-400 hover:text-blue-400 transition-all font-medium"
+                            >
+                              {s}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 ))}
+                {isAiLoading && (
+                  <div className="flex gap-3 ml-2">
+                    <div className="w-8 h-8 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center">
+                      <Sparkles size={14} className="text-blue-400 animate-spin" />
+                    </div>
+                    <div className="px-5 py-3 bg-white/5 border border-white/10 rounded-3xl rounded-tl-none flex gap-1 items-center">
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce"></span>
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:0.2s]"></span>
+                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce [animation-delay:0.4s]"></span>
+                    </div>
+                  </div>
+                )}
               </AnimatePresence>
               <div ref={chatEndRef} />
             </div>
 
-            <div className="p-6 pt-2 shrink-0">
-              <form onSubmit={handleSend} className="relative flex items-center">
-                <Search className="absolute left-4 w-5 h-5 text-gray-500" />
+            <div className="p-6 shrink-0 bg-gradient-to-t from-[#0f0f12] to-transparent">
+              <form onSubmit={handleSend} className="relative group">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500 group-focus-within:text-blue-500 transition-colors" />
                 <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Hỏi về Đà Nẵng..."
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-14 focus:outline-none focus:ring-2 focus:ring-blue-500/30 transition-all text-sm"
+                  type="text" value={input} onChange={(e) => setInput(e.target.value)} disabled={isAiLoading}
+                  placeholder="Hỏi trợ lý MapAI..."
+                  className="w-full bg-white/[0.03] border border-white/10 rounded-2xl py-4 pl-12 pr-14 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all text-[13px] text-white placeholder:text-gray-600"
                 />
-                <button
-                  type="submit"
-                  disabled={!input.trim()}
-                  className="absolute right-2 p-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-xl transition-all"
-                >
-                  <Send className="w-5 h-5" />
+                <button type="submit" disabled={!input.trim() || isAiLoading} className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-blue-600 hover:bg-blue-500 disabled:opacity-30 disabled:grayscale text-white rounded-xl transition-all shadow-lg shadow-blue-500/30">
+                  <Send className="w-4 h-4" />
                 </button>
               </form>
             </div>

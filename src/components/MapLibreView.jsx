@@ -16,7 +16,7 @@ import MapStatusOverlays from './MapLibre/MapStatusOverlays';
 import LocationRequestPopup from './MapLibre/LocationRequestPopup';
 
 // Import Context
-import { useToast } from '../context/ToastContext';
+import { useToast } from '../hooks/useToast';
 
 const CATEGORY_COLORS = {
   'food': '#ff9f43',
@@ -49,7 +49,6 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
   const [initialDestination, setInitialDestination] = useState(null);
 
   // Refs
-  const markersRef = useRef({}); 
   const routeMarkersRef = useRef([]);
   const userMarkerRef = useRef(null);
   const searchMarkerRef = useRef(null);
@@ -75,7 +74,7 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
     return true;
   }, [is3D]);
 
-  const addSearchMarker = useCallback((lng, lat, title = "") => {
+  const addSearchMarker = useCallback((lng, lat) => {
     if (!map.current) return;
     if (searchMarkerRef.current) searchMarkerRef.current.remove();
 
@@ -273,13 +272,14 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
         addToast("Đã định vị thành công!", "success");
       },
       (error) => { 
+        console.error("Geolocation error:", error);
         removeToast(loadingId); 
         addToast("Không thể lấy vị trí.", "error"); 
         setIsUserLocating(false);
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
-  }, [addToast, removeToast]);
+  }, [addToast, removeToast, initialOrigin?.name]);
 
   const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY?.trim();
   const styleUrl = (MAPTILER_KEY && MAPTILER_KEY !== 'YOUR_MAPTILER_KEY_HERE')
@@ -321,7 +321,7 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
         `;
         new maplibregl.Popup({ offset: [0, -10], closeButton: true }).setLngLat(e.lngLat).setHTML(popupContent).addTo(map.current);
       });
-    } catch (err) { setMapError("Không thể khởi tạo bản đồ."); }
+    } catch (_err) { setMapError("Không thể khởi tạo bản đồ."); }
     return () => { if (map.current) { map.current.remove(); map.current = null; } };
   }, [MAPTILER_KEY, styleUrl]);
 
@@ -330,7 +330,7 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
     try {
       const details = await fetchPlaceDetails(name, coordinates);
       setSelectedPlace(details);
-    } catch (error) { addToast("Không thể tải thông tin", "error"); }
+    } catch (_error) { addToast("Không thể tải thông tin", "error"); }
     finally { setIsDetailLoading(false); }
   }, [addToast]);
 
@@ -397,7 +397,7 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
       setRouteInfo(route);
       removeToast(loadingToastId);
       addToast("Đã tìm thấy đường!", "success");
-    } catch (error) { removeToast(loadingToastId); addToast("Lỗi tìm đường", "error"); }
+    } catch (_error) { removeToast(loadingToastId); addToast("Lỗi tìm đường", "error"); }
   };
 
   useEffect(() => {

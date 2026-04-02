@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../hooks/useAuth";
-import { useToast } from "../context/ToastContext";
+import { useToast } from "../hooks/useToast";
 import { validateEmail } from "../utils/validators";
 import { 
   Mail, 
@@ -16,7 +16,7 @@ export default function ForgotPassword() {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSent, setIsSent] = useState(false);
-  const [error, setError] = useState("");
+  const [, setError] = useState("");
   
   const { forgotPassword } = useAuth();
   const { addToast } = useToast();

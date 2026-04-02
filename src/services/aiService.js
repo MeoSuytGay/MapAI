@@ -1,7 +1,7 @@
 import * as prompts from '../prompts/mapAssistantPrompt';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
-// Sử dụng model gemini-1.5-flash cho ổn định (hoặc 2.0-flash nếu bạn chắc chắn API key hỗ trợ)
+
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
 /**

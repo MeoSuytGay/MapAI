@@ -3,9 +3,11 @@ import MainLayout from './components/MainLayout'
 import Home from './pages/Home'
 import Login from './pages/Login'
 import Register from './pages/Register'
+import VerifyEmail from './pages/VerifyEmail'
 import ForgotPassword from './pages/ForgotPassword'
 import Explore from './pages/Explore'
 import MapPage from './pages/MapPage'
+import Profile from './pages/Profile'
 import ProtectedRoute from './components/ProtectedRoute'
 import { useAuth } from './hooks/useAuth'
 import './App.css'
@@ -22,11 +24,13 @@ function App() {
         {/* Auth routes - redirect to home if already logged in */}
         <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login />} />
         <Route path="/register" element={user ? <Navigate to="/" replace /> : <Register />} />
+        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="/forgot-password" element={user ? <Navigate to="/" replace /> : <ForgotPassword />} />
 
         {/* Protected routes within MainLayout */}
         <Route element={<ProtectedRoute />}>
           <Route path="/explore" element={<Explore />} />
+          <Route path="/profile" element={<Profile />} />
         </Route>
       </Route>
 

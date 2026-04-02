@@ -7,9 +7,8 @@ const SERPAPI_KEY = import.meta.env.VITE_SERIAPI_KEY;
  * Note: In a production environment, this should be called from a backend
  * to avoid CORS issues and protect your API key.
  * @param {string} name - Name of the place
- * @param {Array} coordinates - [lng, lat]
  */
-export const fetchPlaceDetails = async (name, coordinates) => {
+export const fetchPlaceDetails = async (name) => {
   // Tạm thời tắt gọi API thực tế theo yêu cầu
   /*
   if (!SERPAPI_KEY || SERPAPI_KEY === 'YOUR_SERPAPI_KEY_HERE') {

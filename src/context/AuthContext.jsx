@@ -1,90 +1,85 @@
-import { createContext, useState, useEffect } from "react";
-
-export const AuthContext = createContext({
-  user: null,
-  login: () => {},
-  register: () => {},
-  logout: () => {},
-  forgotPassword: () => {},
-  isLoading: true,
-});
+import { useState, useEffect } from "react";
+import { authApi } from "../services/authService";
+import { userApi } from "../services/userService";
+import { clearTokens, decodeToken } from "../services/api";
+import { AuthContext } from "./authContext";
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Giả lập kiểm tra token từ LocalStorage khi khởi động
-    const storedUser = localStorage.getItem("mapai_user");
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch (e) {
-        console.error("Failed to parse stored user", e);
-        localStorage.removeItem("mapai_user");
+    const initAuth = async () => {
+      const accessToken = localStorage.getItem("accessToken");
+      if (accessToken) {
+        try {
+          const decoded = decodeToken(accessToken);
+          if (decoded) {
+            // Lấy thông tin cơ bản từ /auth/me khi khởi tạo
+            const userData = await authApi.getMe();
+            setUser(userData);
+          } else {
+            clearTokens();
+          }
+        } catch (e) {
+          console.error("Khởi tạo auth thất bại:", e);
+          clearTokens();
+        }
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    };
+
+    initAuth();
   }, []);
 
-  const login = async (emailOrUsername, password) => {
-    // Giả lập gọi API đăng nhập
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (
-          (emailOrUsername === "admin" && password === "admin") ||
-          (emailOrUsername === "test@example.com" && password === "password123")
-        ) {
-          const userData = {
-            id: "1",
-            name: emailOrUsername === "admin" ? "Hệ thống Quản trị" : "Người dùng Thử nghiệm",
-            email: emailOrUsername === "admin" ? "admin@mapai.vn" : "test@example.com",
-            avatar: null,
-            role: emailOrUsername === "admin" ? "admin" : "user",
-          };
-          setUser(userData);
-          localStorage.setItem("mapai_user", JSON.stringify(userData));
-          resolve(userData);
-        } else {
-          reject(new Error("Thông tin xác thực không chính xác."));
-        }
-      }, 1000);
-    });
+  const login = async (email, password) => {
+    await authApi.login({ email, password });
+    // Dùng /auth/me ngay sau khi login
+    const userData = await authApi.getMe();
+    setUser(userData);
+    return userData;
   };
 
-  const register = async (name, email, password) => {
-    // Giả lập gọi API đăng ký
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        const userData = {
-          id: Math.random().toString(36).substr(2, 9),
-          name,
-          email,
-          avatar: null,
-          role: "user",
-        };
-        // Tự động đăng nhập sau khi đăng ký thành công
-        setUser(userData);
-        localStorage.setItem("mapai_user", JSON.stringify(userData));
-        resolve(userData);
-      }, 1500);
-    });
+  const register = async (userData) => {
+    return await authApi.register(userData);
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("mapai_user");
+  const logout = async () => {
+    try {
+      await authApi.logout();
+    } catch (error) {
+      console.error("Logout error:", error);
+    } finally {
+      setUser(null);
+      clearTokens();
+      // Xóa tất cả các dữ liệu khác nếu có
+      sessionStorage.clear();
+    }
+  };
+
+  const googleLogin = async (idToken) => {
+    const data = await authApi.googleLogin(idToken);
+    // Dùng /auth/me ngay sau khi google login
+    const userData = await authApi.getMe();
+    setUser(userData);
+    return data;
   };
 
   const forgotPassword = async (email) => {
-    // Giả lập gọi API quên mật khẩu
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        console.log(`Reset password link sent to: ${email}`);
-        resolve();
-      }, 1500);
-    });
+    return await authApi.forgotPassword(email);
   };
+
+  const refreshUser = async () => {
+    try {
+      // /user/infor sẽ được gọi khi vào trang Profile để lấy chi tiết
+      const userData = await userApi.getProfile();
+      setUser(userData);
+      return userData;
+    } catch (e) {
+      console.error("Cập nhật thông tin profile (/user/infor) thất bại:", e);
+    }
+  };
+
 
   return (
     <AuthContext.Provider
@@ -93,7 +88,9 @@ export const AuthProvider = ({ children }) => {
         login,
         register,
         logout,
+        googleLogin,
         forgotPassword,
+        refreshUser,
         isLoading,
       }}
     >

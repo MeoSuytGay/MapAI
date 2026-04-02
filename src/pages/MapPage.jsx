@@ -1,15 +1,13 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ArrowLeft, Send, User, Sparkles, Search, ChevronRight, ChevronLeft, MessageSquare, Navigation, MapPin, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import MapLibreView from '../components/MapLibreView';
 import SearchBar from '../components/SearchBar';
 import { askMapAI } from '../services/aiService';
-import { useToast } from '../context/ToastContext';
 
 const MapPage = () => {
   const navigate = useNavigate();
-  const { addToast } = useToast();
   const [input, setInput] = useState('');
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const [isDirectionsMode, setIsDirectionsMode] = useState(false);

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapPin, Navigation, ArrowLeftRight, X, Search, Loader2, ArrowLeft, MoreVertical, Flag, Car, Bike, Footprints, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Power, Clock, CornerUpRight, CornerUpLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -7,7 +7,6 @@ const DirectionsPanel = ({
   onRouteSelected, 
   onStartNavigation,
   onStopNavigation,
-  onMoveCamera,
   onMoveToStep,
   isNavigating,
   initialOrigin = null, 
@@ -108,7 +107,7 @@ const DirectionsPanel = ({
 
   useEffect(() => {
     if (origin && destination) onRouteSelected(origin, destination, travelMode);
-  }, [origin, destination, travelMode]);
+  }, [origin, destination, travelMode, onRouteSelected]);
 
   const searchLocation = async (text, type) => {
     if (!text.trim() || text.length < 3) return;

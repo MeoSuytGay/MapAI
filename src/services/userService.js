@@ -23,7 +23,7 @@ export const userApi = {
   },
 
   updateAvatar: async (formData) => {
-    const response = await request('/update-avatar', {
+    const response = await request('/user/update-avatar', {
       method: 'POST',
       headers: {
         'Content-Type': undefined 

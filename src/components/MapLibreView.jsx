@@ -6,6 +6,7 @@ import { AnimatePresence } from 'framer-motion';
 
 // Import Services & Helpers
 import { fetchPlaceDetails } from '../services/serpApi';
+import { fetchOSMRoute } from '../services/osmService';
 
 // Import Components
 import PlaceDetailPanel from './PlaceDetailPanel';
@@ -334,7 +335,7 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
     finally { setIsDetailLoading(false); }
   }, [addToast]);
 
-  const handleRouteSelected = async (origin, destination, mode = 'driving') => {
+  const handleRouteSelected = useCallback(async (origin, destination, mode = 'driving') => {
     if (!map.current) return;
     
     // Xóa tuyến đường cũ và các marker liên quan trước khi tìm mới
@@ -348,13 +349,7 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
 
     const loadingToastId = addToast(`Đang tìm đường...`, "loading", Infinity);
     try {
-      const serverPrefix = mode === 'driving' ? 'routed-car' : mode === 'bicycle' ? 'routed-bike' : 'routed-foot';
-      const url = `https://routing.openstreetmap.de/${serverPrefix}/route/v1/${mode}/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson&steps=true`;
-      const response = await fetch(url);
-      const data = await response.json();
-      if (data.code !== 'Ok') throw new Error('Không tìm thấy tuyến đường.');
-      
-      const route = data.routes[0];
+      const route = await fetchOSMRoute(origin, destination, mode);
       
       // Thêm Line Route
       map.current.addSource('route', { type: 'geojson', data: { type: 'Feature', geometry: route.geometry } });
@@ -397,8 +392,12 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
       setRouteInfo(route);
       removeToast(loadingToastId);
       addToast("Đã tìm thấy đường!", "success");
-    } catch (_error) { removeToast(loadingToastId); addToast("Lỗi tìm đường", "error"); }
-  };
+    } catch (_error) { 
+      console.error("Route error:", _error);
+      removeToast(loadingToastId); 
+      addToast("Lỗi tìm đường", "error"); 
+    }
+  }, [addToast, removeToast, clearRoute]);
 
   useEffect(() => {
     window.showPlaceDetails = (name, lng, lat) => handleShowDetails(name, [lng, lat]);

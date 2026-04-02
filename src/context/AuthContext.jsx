@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { authApi } from "../services/authService";
 import { userApi } from "../services/userService";
 import { clearTokens, decodeToken } from "../services/api";
@@ -32,19 +32,19 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
-  const login = async (email, password) => {
+  const login = useCallback(async (email, password) => {
     await authApi.login({ email, password });
     // Dùng /auth/me ngay sau khi login
     const userData = await authApi.getMe();
     setUser(userData);
     return userData;
-  };
+  }, []);
 
-  const register = async (userData) => {
+  const register = useCallback(async (userData) => {
     return await authApi.register(userData);
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await authApi.logout();
     } catch (error) {
@@ -55,21 +55,21 @@ export const AuthProvider = ({ children }) => {
       // Xóa tất cả các dữ liệu khác nếu có
       sessionStorage.clear();
     }
-  };
+  }, []);
 
-  const googleLogin = async (idToken) => {
+  const googleLogin = useCallback(async (idToken) => {
     const data = await authApi.googleLogin(idToken);
     // Dùng /auth/me ngay sau khi google login
     const userData = await authApi.getMe();
     setUser(userData);
     return data;
-  };
+  }, []);
 
-  const forgotPassword = async (email) => {
+  const forgotPassword = useCallback(async (email) => {
     return await authApi.forgotPassword(email);
-  };
+  }, []);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       // /user/infor sẽ được gọi khi vào trang Profile để lấy chi tiết
       const userData = await userApi.getProfile();
@@ -78,7 +78,7 @@ export const AuthProvider = ({ children }) => {
     } catch (e) {
       console.error("Cập nhật thông tin profile (/user/infor) thất bại:", e);
     }
-  };
+  }, []);
 
 
   return (

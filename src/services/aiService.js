@@ -1,12 +1,10 @@
 import * as prompts from '../prompts/mapAssistantPrompt';
+import { searchNominatim } from './osmService';
 
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
 
 const API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`;
 
-/**
- * Gọi Gemini API tổng quát
- */
 /**
  * Gọi Gemini API tổng quát kèm theo ngữ cảnh lịch sử
  */
@@ -43,24 +41,6 @@ const callGemini = async (systemPrompt, schema, userMessage, chatHistory = []) =
   const data = await response.json();
   const text = data.candidates[0].content.parts[0].text;
   return JSON.parse(text);
-};
-
-/**
- * Tìm kiếm địa điểm qua Nominatim
- */
-const searchNominatim = async (query) => {
-  try {
-    // Khung tọa độ Đà Nẵng (xấp xỉ): 107.81, 16.22 (Tây Bắc) và 108.49, 15.88 (Đông Nam)
-    const viewbox = '107.81,16.22,108.49,15.88';
-    const response = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=3&addressdetails=1&viewbox=${viewbox}&bounded=1&countrycodes=vn`
-    );
-    if (!response.ok) return [];
-    return await response.json();
-  } catch (err) {
-    console.error("Nominatim error:", err);
-    return [];
-  }
 };
 
 /**

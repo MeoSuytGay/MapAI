@@ -24,7 +24,7 @@ import { useToast } from '../hooks/useToast';
 
 export default function Profile() {
   const { user, logout, refreshUser } = useAuth();
-  const { addToast } = useToast();
+  const { addToast, removeToast } = useToast();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
@@ -87,20 +87,18 @@ export default function Profile() {
     formDataObj.append('file', file);
 
     setIsUploading(true);
-    addToast("Đang tải ảnh lên...", "loading", Infinity);
+    const loadingToastId = addToast("Đang tải ảnh lên...", "loading", Infinity);
 
     try {
       await userApi.updateAvatar(formDataObj);
       await refreshUser();
+      removeToast(loadingToastId);
       addToast("Cập nhật ảnh đại diện thành công!", "success");
     } catch (error) {
+      removeToast(loadingToastId);
       addToast(error.message || "Tải ảnh lên thất bại", "error");
     } finally {
       setIsUploading(false);
-      // addToast "loading" should be removed manually if it was Infinity
-      // but our context might not have implemented it. 
-      // Based on my previous fix, removeToast(id) is available.
-      // However, addToast with 'success'/'error' will likely show a new one.
     }
   };
 

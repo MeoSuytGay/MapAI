@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, MapPin, X, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useToast } from '../context/ToastContext';
+import { useToast } from '../hooks/useToast';
 
 const SearchBar = () => {
   const [query, setQuery] = useState('');
@@ -23,7 +23,7 @@ const SearchBar = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const searchLocation = async (text) => {
+  const searchLocation = useCallback(async (text) => {
     if (!text.trim() || text.length < 3) {
       setResults([]);
       return;
@@ -40,20 +40,20 @@ const SearchBar = () => {
       const data = await response.json();
       setResults(data);
       setShowResults(true);
-    } catch (error) {
-      console.error('Search error:', error);
+    } catch (_error) {
+      console.error('Search error:', _error);
       addToast("Không thể tìm kiếm địa điểm này", "error");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [addToast]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       if (query) searchLocation(query);
     }, 500);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, searchLocation]);
 
   const handleSelect = (result) => {
     const lat = result.lat;

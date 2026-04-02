@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { useAuth } from '../hooks/useAuth'
+import { useAuth } from '../hooks/useAuth';
+
 import { 
   Map, 
   Menu, 
@@ -23,7 +24,7 @@ const Header = () => {
 
   const handleLogout = () => {
     logout()
-    navigate("/")
+    navigate("/login")
     setShowUserMenu(false)
   }
 
@@ -133,7 +134,10 @@ const Header = () => {
                       <p className="text-[12px] font-black text-white">{user.name}</p>
                       <p className="text-[10px] text-slate-500">{user.email}</p>
                     </div>
-                    <button className="w-full px-4 py-2.5 text-left text-[12px] font-bold text-slate-300 hover:bg-white/5 hover:text-white flex items-center gap-2.5 transition-colors">
+                    <button 
+                      onClick={() => { navigate("/profile"); setShowUserMenu(false); }}
+                      className="w-full px-4 py-2.5 text-left text-[12px] font-bold text-slate-300 hover:bg-white/5 hover:text-white flex items-center gap-2.5 transition-colors"
+                    >
                       <User size={14} className="text-blue-500" /> Hồ sơ cá nhân
                     </button>
                     <button className="w-full px-4 py-2.5 text-left text-[12px] font-bold text-slate-300 hover:bg-white/5 hover:text-white flex items-center gap-2.5 transition-colors">

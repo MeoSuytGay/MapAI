@@ -41,33 +41,41 @@ export const getAllLocations = async () => {
 };
 
 /**
- * 2. Lấy chi tiết một địa điểm theo ID
- * @param {string} id - ID của địa điểm
- * @returns {Promise<Object>} Chi tiết địa điểm
+ * 3. Tìm kiếm chi tiết một địa điểm dựa trên tên gọi và vị trí địa lý (Tọa độ)
+ * @param {string} title - Tên địa điểm
+ * @param {Array} coordinates - [lng, lat]
+ * @returns {Promise<Object>} Chi tiết địa điểm duy nhất phù hợp nhất
  */
-export const getLocationById = async (id) => {
+export const searchLocation = async (title, coordinates) => {
   try {
-    const response = await request(`/location/${id}`);
+    const [lng, lat] = coordinates;
+    console.log(`Searching for location: ${title} at coordinates: [${lat}, ${lng}]`);
+    const response = await request(`/location/search?title=${encodeURIComponent(title)}&lat=${lat}&lng=${lng}`);
     
     if (!response.ok) {
-      throw new Error(`Error fetching location detail: ${response.statusText}`);
+      if (response.status === 404) return null;
+      throw new Error(`Error searching location: ${response.statusText}`);
     }
     
     const data = await response.json();
     
-    // Mapping dữ liệu chi tiết
+    // Mapping dữ liệu trả về sang format UI đang dùng
     return {
       ...data,
       name: data.title,
       lat: data.latitude,
       lng: data.longitude,
       image: data.thumbnail,
+      reviews: data.totalReviews,
+      type: data.category,
+      phone: data.phoneNumber,
+      // Map tags từ string sang array nếu cần
       tags: typeof data.tags === 'string' 
         ? data.tags.replace(/[{}]/g, '').split(',') 
         : (Array.isArray(data.tags) ? data.tags : [])
     };
   } catch (error) {
-    console.error(`Error in getLocationById for id ${id}:`, error);
+    console.error(`Error in searchLocation for ${title}:`, error);
     return null;
   }
 };

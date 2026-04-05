@@ -1,37 +1,15 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, MapPin, Star, Coffee, Utensils, Camera, TrendingUp, Filter, ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, MapPin, Star, Coffee, Utensils, Camera, TrendingUp, Filter, ArrowRight, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-// ... (locations and categories definitions remain the same)
-const locations = [
-  { id: 1, name: "Cầu Rồng", type: "Du lịch", lat: 16.0611, lng: 108.2274, rating: 4.8, image: "https://images.unsplash.com/photo-1559592442-992ca3993433?q=80&w=1000&auto=format&fit=crop", tags: ["Check-in", "Biểu tượng"], distance: "1.2km", isFeatured: true },
-  { id: 2, name: "Bà Nà Hills", type: "Du lịch", lat: 15.9989, lng: 107.9961, rating: 4.9, image: "https://images.unsplash.com/photo-1582234032482-62323e0ecf79?q=80&w=1000&auto=format&fit=crop", tags: ["Sống ảo", "Vui chơi"], distance: "25km", isFeatured: true },
-  { id: 3, name: "Bánh Xèo Bà Dưỡng", type: "Ăn uống", lat: 16.0520, lng: 108.2163, rating: 4.6, image: "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?q=80&w=1000&auto=format&fit=crop", tags: ["Đặc sản", "Hải sản"], distance: "2.5km", isFeatured: false },
-  { id: 4, name: "The Cup Coffee", type: "Cafe", lat: 16.0680, lng: 108.2230, rating: 4.5, image: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=1000&auto=format&fit=crop", tags: ["Yên tĩnh", "View đẹp"], distance: "0.8km", isFeatured: false },
-  { id: 5, name: "Bãi biển Mỹ Khê", type: "Du lịch", lat: 16.0601, lng: 108.2464, rating: 4.7, image: "https://images.unsplash.com/photo-1506461883276-594a12b11cf3?q=80&w=1000&auto=format&fit=crop", tags: ["Biển", "Gần tôi"], distance: "3.1km", isFeatured: true },
-  { id: 6, name: "Wonderlust Cafe", type: "Cafe", lat: 16.0652, lng: 108.2205, rating: 4.7, image: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=1000&auto=format&fit=crop", tags: ["Sống ảo", "Thiết kế"], distance: "1.5km", isFeatured: false },
-  { id: 7, name: "Hải sản Năm Đảnh", type: "Ăn uống", lat: 16.0963, lng: 108.2562, rating: 4.4, image: "https://images.unsplash.com/photo-1551489186-cf8726f514f8?q=80&w=1000&auto=format&fit=crop", tags: ["Hải sản", "Giá rẻ"], distance: "4.2km", isFeatured: false },
-  { id: 8, name: "Sơn Trà Marina", type: "Cafe", lat: 16.1215, lng: 108.2750, rating: 4.8, image: "https://images.unsplash.com/photo-1445116572660-236099ec97a0?q=80&w=1000&auto=format&fit=crop", tags: ["View đẹp", "Địa Trung Hải"], distance: "7.5km", isFeatured: false },
-  { id: 9, name: "Chùa Linh Ứng", type: "Du lịch", lat: 16.1002, lng: 108.2775, rating: 4.9, image: "https://images.unsplash.com/photo-1598250074212-0761e138a412?q=80&w=1000&auto=format&fit=crop", tags: ["Tâm linh", "View đẹp"], distance: "6.5km", isFeatured: true },
-  { id: 10, name: "Bảo tàng Chăm", type: "Du lịch", lat: 16.0614, lng: 108.2227, rating: 4.5, image: "https://images.unsplash.com/photo-1582234032482-62323e0ecf79?q=80&w=1000&auto=format&fit=crop", tags: ["Văn hóa", "Lịch sử"], distance: "0.5km", isFeatured: false },
-  { id: 11, name: "Chợ Cồn", type: "Ăn uống", lat: 16.0682, lng: 108.2155, rating: 4.6, image: "https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?q=80&w=1000&auto=format&fit=crop", tags: ["Ẩm thực", "Bình dân"], distance: "1.2km", isFeatured: false },
-  { id: 12, name: "Avo Cafe", type: "Cafe", lat: 16.0725, lng: 108.2248, rating: 4.4, image: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=1000&auto=format&fit=crop", tags: ["Tối giản", "Làm việc"], distance: "1.0km", isFeatured: false },
-  { id: 13, name: "Ngũ Hành Sơn", type: "Du lịch", lat: 16.0033, lng: 108.2625, rating: 4.7, image: "https://images.unsplash.com/photo-1506461883276-594a12b11cf3?q=80&w=1000&auto=format&fit=crop", tags: ["Leo núi", "Khám phá"], distance: "8.0km", isFeatured: true },
-  { id: 14, name: "Dreamy Sky", type: "Cafe", lat: 16.0595, lng: 108.2410, rating: 4.6, image: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=1000&auto=format&fit=crop", tags: ["Tone trắng", "Hàn Quốc"], distance: "2.8km", isFeatured: false },
-  { id: 15, name: "Mì Quảng Ếch Bếp Trang", type: "Ăn uống", lat: 16.0645, lng: 108.2235, rating: 4.5, image: "https://images.unsplash.com/photo-1551489186-cf8726f514f8?q=80&w=1000&auto=format&fit=crop", tags: ["Đặc sản", "Sạch sẽ"], distance: "0.7km", isFeatured: false },
-  { id: 16, name: "Cầu Thuận Phước", type: "Du lịch", lat: 16.0945, lng: 108.2215, rating: 4.7, image: "https://images.unsplash.com/photo-1445116572660-236099ec97a0?q=80&w=1000&auto=format&fit=crop", tags: ["Cảnh đẹp", "Hoàng hôn"], distance: "4.5km", isFeatured: false },
-  { id: 17, name: "Reply 1988 Cafe", type: "Cafe", lat: 16.0615, lng: 108.2195, rating: 4.7, image: "https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?q=80&w=1000&auto=format&fit=crop", tags: ["Vintage", "Hoài niệm"], distance: "1.1km", isFeatured: false },
-  { id: 18, name: "Hải sản Bé Mặn", type: "Ăn uống", lat: 16.0715, lng: 108.2485, rating: 4.3, image: "https://images.unsplash.com/photo-1551489186-cf8726f514f8?q=80&w=1000&auto=format&fit=crop", tags: ["Tươi sống", "Nhộn nhịp"], distance: "3.5km", isFeatured: false },
-  { id: 19, name: "Công viên APEC", type: "Du lịch", lat: 16.0598, lng: 108.2255, rating: 4.6, image: "https://images.unsplash.com/photo-1559592442-992ca3993433?q=80&w=1000&auto=format&fit=crop", tags: ["Kiến trúc", "Check-in"], distance: "0.9km", isFeatured: false },
-  { id: 20, name: "Tasty Coffee", type: "Cafe", lat: 16.0675, lng: 108.2125, rating: 4.5, image: "https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=1000&auto=format&fit=crop", tags: ["Giá rẻ", "Sinh viên"], distance: "1.8km", isFeatured: false },
-];
+import { getAllLocations } from '../services/locationService';
 
 const categories = [
   { id: 'all', name: 'Tất cả', icon: <Filter size={18} /> },
   { id: 'eat', name: 'Ăn uống', icon: <Utensils size={18} />, type: 'Ăn uống' },
   { id: 'cafe', name: 'Cafe', icon: <Coffee size={18} />, type: 'Cafe' },
   { id: 'travel', name: 'Du lịch', icon: <Camera size={18} />, type: 'Du lịch' },
+  { id: 'landmark', name: 'Địa danh', icon: <MapPin size={18} />, type: 'Landmark' },
   { id: 'trending', name: 'Trending', icon: <TrendingUp size={18} />, isTrending: true },
 ];
 
@@ -39,31 +17,47 @@ const ITEMS_PER_PAGE = 6;
 
 const Explore = () => {
   const navigate = useNavigate();
+  const [locations, setLocations] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [isSearching, setIsSearching] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
 
+  // Fetch data từ Backend
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      const data = await getAllLocations();
+      setLocations(data);
+      setIsLoading(false);
+    };
+    fetchData();
+  }, []);
+
   // Reset page when tab or search changes
-  React.useEffect(() => {
+  useEffect(() => {
     setCurrentPage(1);
   }, [activeTab, searchTerm]);
 
   // Xử lý filter
   const filteredLocations = useMemo(() => {
     return locations.filter(loc => {
-      const matchesSearch = loc.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = loc.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                           loc.tags.some(t => t.toLowerCase().includes(searchTerm.toLowerCase()));
       const category = categories.find(c => c.id === activeTab);
       
       let matchesTab = true;
       if (activeTab !== 'all') {
         if (category?.isTrending) matchesTab = loc.rating >= 4.7;
-        else matchesTab = loc.type === category?.type;
+        else if (category?.type) {
+          matchesTab = loc.type.toLowerCase() === category.type.toLowerCase();
+        }
       }
       
       return matchesSearch && matchesTab;
     });
-  }, [searchTerm, activeTab]);
+  }, [searchTerm, activeTab, locations]);
 
   // Pagination logic
   const totalPages = Math.ceil(filteredLocations.length / ITEMS_PER_PAGE);
@@ -76,10 +70,27 @@ const Explore = () => {
     navigate(`/map?lat=${loc.lat}&lng=${loc.lng}`);
   };
 
-  const quickSuggestions = ["Ăn gì", "Cafe đẹp", "Check-in", "Gần tôi"];
+  const quickSuggestions = ["Ăn gì", "Cafe đẹp", "Check-in", "Cầu Rồng"];
+
+  if (isLoading) {
+    return (
+      <div className="h-screen flex flex-col items-center justify-center bg-slate-950 text-white gap-6">
+        <div className="relative">
+          <div className="w-24 h-24 rounded-full border-t-2 border-indigo-500 animate-spin"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            <Loader2 className="w-10 h-10 text-indigo-400 animate-pulse" />
+          </div>
+        </div>
+        <div className="text-center">
+          <h2 className="text-xl font-bold mb-2 uppercase tracking-widest">Đang kết nối MapAI</h2>
+          <p className="text-slate-500 text-sm italic">Đang tải các địa điểm tuyệt vời tại Đà Nẵng...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="bg-slate-950 text-white font-sans selection:bg-indigo-500/30 flex flex-col">
+    <div className="bg-slate-950 text-white font-sans selection:bg-indigo-500/30 flex flex-col min-h-screen">
       
       {/* Background Decor */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
@@ -126,7 +137,7 @@ const Explore = () => {
                         <MapPin size={16} className="text-indigo-400" />
                         <div>
                           <div className="text-sm font-medium">{loc.name}</div>
-                          <div className="text-xs text-slate-500">{loc.type} • {loc.distance}</div>
+                          <div className="text-xs text-slate-500">{loc.type}</div>
                         </div>
                       </button>
                     ))}
@@ -228,9 +239,6 @@ const Explore = () => {
                 >
                   <div className="relative aspect-video overflow-hidden">
                     <img src={loc.image} alt={loc.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                    <div className="absolute bottom-3 right-3 bg-slate-950/80 backdrop-blur-sm px-2.5 py-1 rounded-lg text-xs font-bold border border-white/10">
-                      {loc.distance}
-                    </div>
                   </div>
                   <div className="p-6 flex-grow flex flex-col">
                     <div className="flex justify-between items-start mb-3">

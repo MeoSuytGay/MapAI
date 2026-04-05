@@ -11,7 +11,8 @@ export const userApi = {
   },
 
   updateInfo: async (data) => {
-    const response = await request('/user/update', {
+    console.log('Updating user info with data:', data);
+    const response = await request('/user/update-info', {
       method: 'PUT',
       body: JSON.stringify(data)
     });

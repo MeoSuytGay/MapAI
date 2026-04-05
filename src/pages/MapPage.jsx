@@ -1,20 +1,98 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { ArrowLeft, Send, User, Sparkles, Search, ChevronRight, ChevronLeft, MessageSquare, Navigation, MapPin, Globe } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { ArrowLeft, Send, User, Sparkles, Search, ChevronRight, ChevronLeft, MessageSquare, Navigation, MapPin, Globe, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import MapLibreView from '../components/MapLibreView';
 import SearchBar from '../components/SearchBar';
+import SearchSuggestions from '../components/SearchSuggestions';
 import { askMapAI } from '../services/aiService';
+import { searchNearbyPlaces, searchCityWidePlaces } from '../services/mapServices';
+import { useToast } from '../hooks/useToast';
 
 const MapPage = () => {
   const navigate = useNavigate();
+  const { addToast, removeToast } = useToast();
   const [input, setInput] = useState('');
   const [isChatCollapsed, setIsChatCollapsed] = useState(false);
   const [isDirectionsMode, setIsDirectionsMode] = useState(false);
   const [isNavigating, setIsNavigating] = useState(false);
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isSearchingNearby, setIsSearchingNearby] = useState(false);
+  const [hasNearbyResults, setHasNearbyResults] = useState(false);
+  const [pendingNearbySearch, setPendingNearbySearch] = useState(null);
   const chatEndRef = useRef(null);
   const mapRef = useRef(null);
+
+  // Hàm thực hiện tìm kiếm Nearby thực tế
+  const executeNearbySearch = useCallback(async (query, lat, lng) => {
+    if (!mapRef.current) return;
+    
+    setIsSearchingNearby(true);
+    const loadingToastId = addToast(`Đang tìm ${query} gần bạn...`, "loading", Infinity);
+
+    try {
+      const places = await searchNearbyPlaces(lat, lng, query, 2000);
+      removeToast(loadingToastId);
+      
+      if (places && places.length > 0) {
+        mapRef.current.setNearbyMarkers(places);
+        setHasNearbyResults(true);
+        addToast(`Đã tìm thấy ${places.length} địa điểm gần bạn!`, "success");
+      } else {
+        addToast(`Không tìm thấy ${query} nào ở gần đây.`, "info");
+      }
+    } catch (error) {
+      removeToast(loadingToastId);
+      console.error("Nearby search error:", error);
+      addToast("Có lỗi xảy ra khi tìm kiếm địa điểm.", "error");
+    } finally {
+      setIsSearchingNearby(false);
+      setPendingNearbySearch(null);
+    }
+  }, [addToast, removeToast]);
+
+  // Callback khi vị trí được xác định từ MapLibreView
+  const handleLocationFound = useCallback((locData) => {
+    if (pendingNearbySearch) {
+      executeNearbySearch(pendingNearbySearch, locData.lat, locData.lng);
+    }
+  }, [pendingNearbySearch, executeNearbySearch]);
+
+  const handleNearbySearch = async (suggestion) => {
+    if (!mapRef.current || isSearchingNearby) return;
+
+    setIsSearchingNearby(true);
+    const loadingToastId = addToast(`Đang tìm ${suggestion.label} toàn thành phố...`, "loading", Infinity);
+
+    try {
+      // Sử dụng API City-Wide mới cho các nút gợi ý dưới thanh tìm kiếm
+      const places = await searchCityWidePlaces(suggestion.query);
+      
+      removeToast(loadingToastId);
+      
+      if (places && places.length > 0) {
+        mapRef.current.setNearbyMarkers(places);
+        setHasNearbyResults(true);
+        addToast(`Tìm thấy ${places.length} ${suggestion.label} tại Đà Nẵng!`, "success");
+      } else {
+        addToast(`Không tìm thấy ${suggestion.label} nào.`, "info");
+      }
+    } catch (error) {
+      removeToast(loadingToastId);
+      console.error("City-wide search error:", error);
+      addToast("Có lỗi xảy ra khi tìm kiếm địa điểm.", "error");
+    } finally {
+      setIsSearchingNearby(false);
+    }
+  };
+
+  const handleClearNearby = () => {
+    if (mapRef.current) {
+      mapRef.current.clearNearbyMarkers();
+      setHasNearbyResults(false);
+      addToast("Đã xóa các địa điểm tìm kiếm.", "info");
+    }
+  };
 
   const [messages, setMessages] = useState([
     {
@@ -70,6 +148,7 @@ const MapPage = () => {
     try {
       // Gọi Gemini AI
       const response = await askMapAI(messageText, messages.slice(-5));
+      console.log("Raw AI Response received in MapPage:", response);
       
       const aiMsg = {
         id: crypto.randomUUID(),
@@ -84,31 +163,142 @@ const MapPage = () => {
 
       // XỬ LÝ CÁC ACTION TỪ AI
       if (response.action) {
-        const { type, value, destination } = response.action;
+        console.log("Processing AI Action:", response.action);
+        const { type, target_location, search_query, value, destination } = response.action;
 
         // 1. Chuyển chế độ 2D/3D
-        if (type === 'SWITCH_VIEW') {
+        if (type?.toUpperCase() === '2D' || type?.toUpperCase() === '3D' || type?.toUpperCase() === 'SWITCH_VIEW') {
+          const viewMode = (type?.toUpperCase() === '3D' || value?.toLowerCase() === '3d') ? '3d' : '2d';
+          console.log("Action: Switching view to", viewMode);
           if (mapRef.current) {
-            mapRef.current.toggleView(value);
+            mapRef.current.toggleView(viewMode);
           }
         }
 
-        // 2. Bay đến địa điểm (Location)
-        if (type === 'FLY_TO' && value) {
-          setTimeout(() => {
-            handleFlyTo({ ...value, name: response.location?.name || "Địa điểm tìm thấy" });
-          }, 1000);
+        // 2. Bay đến địa điểm cụ thể (Tương ứng 'Location')
+        if ((type?.toUpperCase() === 'LOCATION' || type?.toUpperCase() === 'FLY_TO') && (target_location || value)) {
+          // Nếu value hoặc target_location đã là object có tọa độ
+          const locObj = (typeof value === 'object' && value !== null) ? value : 
+                        ((typeof target_location === 'object' && target_location !== null) ? target_location : null);
+          
+          if (locObj && locObj.lat && locObj.lng) {
+            console.log("Action: Flying to provided coordinates:", locObj);
+            handleFlyTo({
+              lat: parseFloat(locObj.lat),
+              lng: parseFloat(locObj.lng),
+              name: locObj.name || "Vị trí yêu cầu"
+            });
+          } else {
+            const locName = target_location || (typeof value === 'string' ? value : value?.name);
+            console.log("Action: Searching and flying to location name:", locName);
+            searchCityWidePlaces(locName).then(places => {
+              if (places && places.length > 0) {
+                const place = places[0];
+                const latNum = parseFloat(place.lat || place.latitude);
+                const lngNum = parseFloat(place.lon || place.lng || place.longitude);
+                
+                if (!isNaN(latNum) && !isNaN(lngNum)) {
+                  handleFlyTo({ 
+                    lat: latNum, 
+                    lng: lngNum, 
+                    name: place.display_name || place.name || locName
+                  });
+                } else {
+                  addToast(`Không lấy được tọa độ cho: ${locName}`, "error");
+                }
+              } else {
+                addToast(`Không tìm thấy địa điểm: ${locName}`, "info");
+              }
+            });
+          }
         }
 
-        // 3. Thiết lập chỉ đường (Direction)
-        if (type === 'SET_DIRECTION' && destination) {
-          setIsDirectionsMode(true);
-          // Sử dụng Custom Event để báo cho DirectionsPanel biết cần set điểm đến
-          setTimeout(() => {
-            window.dispatchEvent(new CustomEvent('ai-set-destination', { 
-              detail: destination 
-            }));
-          }, 500);
+        // 3. Thiết lập chỉ đường (Tương ứng 'Direction')
+        if ((type === 'Direction' || type === 'SET_DIRECTION') && (target_location || destination)) {
+          // Nếu destination đã là object có tọa độ (như trong log của người dùng)
+          if (typeof destination === 'object' && destination !== null && destination.lat && destination.lng) {
+            console.log("Action: Setting direction to provided coordinates:", destination);
+            setIsDirectionsMode(true);
+            const destObj = {
+              lat: parseFloat(destination.lat),
+              lng: parseFloat(destination.lng),
+              name: destination.name || "Đích đến"
+            };
+            
+            // Set vào DirectionsPanel
+            if (mapRef.current && mapRef.current.setDestination) {
+              mapRef.current.setDestination(destObj);
+            }
+            // Bay đến đích để người dùng thấy
+            handleFlyTo(destObj);
+          } else {
+            const destName = target_location || (typeof destination === 'string' ? destination : (destination?.name || value));
+            console.log("Action: Searching and setting direction to name:", destName);
+            setIsDirectionsMode(true);
+            
+            searchCityWidePlaces(destName).then(places => {
+              if (places && places.length > 0) {
+                const place = places[0];
+                const latNum = parseFloat(place.lat || place.latitude);
+                const lngNum = parseFloat(place.lon || place.lng || place.longitude);
+                
+                if (!isNaN(latNum) && !isNaN(lngNum)) {
+                  const destObj = {
+                    lat: latNum,
+                    lng: lngNum,
+                    name: place.display_name || place.name || destName
+                  };
+                  
+                  if (mapRef.current && mapRef.current.setDestination) {
+                    mapRef.current.setDestination(destObj);
+                  } else {
+                    window.dispatchEvent(new CustomEvent('ai-set-destination', { 
+                      detail: destObj 
+                    }));
+                  }
+                  // Bay đến đích để người dùng thấy
+                  handleFlyTo(destObj);
+                }
+              } else {
+                addToast(`Không tìm thấy đích đến: ${destName}`, "info");
+              }
+            });
+          }
+        }
+
+        // 4. Tìm kiếm lân cận (Tương ứng 'Nearby')
+        if (type === 'Nearby' || type === 'NEARBY_SEARCH') {
+          const query = search_query || value || messageText;
+          const savedLoc = sessionStorage.getItem('user_location');
+          console.log("Action: Nearby Search for:", query, "Location status:", savedLoc ? "Found" : "Not found");
+
+          if (savedLoc) {
+            const parsed = JSON.parse(savedLoc);
+            executeNearbySearch(query, parsed.lat, parsed.lng);
+          } else {
+            addToast("Tính năng này yêu cầu vị trí. Vui lòng bật định vị trên trình duyệt!", "error");
+            if (mapRef.current) {
+              setPendingNearbySearch(query);
+              mapRef.current.setShowLocationPopup(true);
+            }
+          }
+        }
+
+        // 5. Tìm kiếm toàn thành phố (Tương ứng 'CityWide')
+        if (type === 'CityWide' || type === 'CITY_SEARCH') {
+          const query = search_query || value || messageText;
+          console.log("Action: CityWide Search for:", query);
+          const loadingId = addToast(`Đang tìm ${query} tại Đà Nẵng...`, "loading", Infinity);
+          searchCityWidePlaces(query).then(places => {
+            removeToast(loadingId);
+            if (places && places.length > 0) {
+              mapRef.current.setNearbyMarkers(places);
+              setHasNearbyResults(true);
+              addToast(`Đã tìm thấy ${places.length} kết quả tại Đà Nẵng!`, "success");
+            } else {
+              addToast(`Không tìm thấy kết quả cho "${query}".`, "info");
+            }
+          });
         }
       } else if (response.location) {
         // Fallback cho logic cũ nếu không có action nhưng có location
@@ -139,16 +329,25 @@ const MapPage = () => {
         className="relative h-full bg-[#121212] overflow-hidden"
       >
         {!isNavigating && (
-          <div className="absolute top-6 left-6 z-10 flex items-center gap-4">
-            <motion.button onClick={() => navigate('/')} className="p-3 bg-white/10 backdrop-blur-md rounded-full border border-white/10 hover:bg-white/20 transition-all shadow-xl group">
-              <ArrowLeft className="w-6 h-6 text-white group-hover:-translate-x-1 transition-transform" />
-            </motion.button>
-            <SearchBar />
-            {!isDirectionsMode && (
-              <motion.button onClick={() => setIsDirectionsMode(true)} className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-950 rounded-full shadow-xl font-black text-[9px] uppercase tracking-[0.15em] transition-all border border-white/20">
-                <Navigation size={14} className="text-blue-600" /> Chỉ đường
+          <div className="absolute top-6 left-6 z-10 flex flex-col gap-4">
+            <div className="flex items-center gap-4">
+              <motion.button onClick={() => navigate('/')} className="p-3 bg-white/10 backdrop-blur-md rounded-full border border-white/10 hover:bg-white/20 transition-all shadow-xl group">
+                <ArrowLeft className="w-6 h-6 text-white group-hover:-translate-x-1 transition-transform" />
               </motion.button>
-            )}
+              <SearchBar />
+              {!isDirectionsMode && (
+                <motion.button onClick={() => setIsDirectionsMode(true)} className="flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-950 rounded-full shadow-xl font-black text-[9px] uppercase tracking-[0.15em] transition-all border border-white/20">
+                  <Navigation size={14} className="text-blue-600" /> Chỉ đường
+                </motion.button>
+              )}
+            </div>
+            
+            {/* Suggestions Row */}
+            <SearchSuggestions 
+              onSearch={handleNearbySearch} 
+              onClear={handleClearNearby} 
+              hasResults={hasNearbyResults} 
+            />
           </div>
         )}
 
@@ -158,6 +357,7 @@ const MapPage = () => {
           setIsDirectionsMode={setIsDirectionsMode}
           isNavigating={isNavigating}
           setIsNavigating={setIsNavigating} 
+          onLocationFound={handleLocationFound}
         />
         <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_100px_rgba(0,0,0,0.8)]"></div>
       </motion.div>

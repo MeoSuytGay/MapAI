@@ -5,7 +5,7 @@ import { useSearchParams } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 
 // Import Services & Helpers
-import { fetchPlaceDetails } from '../services/serpApi';
+import { searchLocation } from '../services/locationService';
 import { fetchRoute } from '../services/mapServices';
 
 // Import Components
@@ -418,11 +418,32 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
   const handleShowDetails = useCallback(async (name, coordinates) => {
     setIsDetailLoading(true);
     try {
-      const details = await fetchPlaceDetails(name, coordinates);
-      setSelectedPlace(details);
-    } catch (_error) { addToast("Không thể tải thông tin", "error"); }
-    finally { setIsDetailLoading(false); }
+      const details = await searchLocation(name, coordinates);
+      if (details) {
+        setSelectedPlace(details);
+      } else {
+        addToast("Không tìm thấy thông tin chi tiết cho địa điểm này.", "info");
+      }
+    } catch (_error) { 
+      addToast("Không thể tải thông tin từ hệ thống.", "error"); 
+    } finally { 
+      setIsDetailLoading(false); 
+    }
   }, [addToast]);
+
+  const handleStartDirectionsFromPanel = useCallback((place) => {
+    const savedLoc = sessionStorage.getItem('user_location');
+    if (savedLoc) setInitialOrigin(JSON.parse(savedLoc));
+    
+    setInitialDestination({
+      name: place.name,
+      lng: place.lng,
+      lat: place.lat
+    });
+    
+    setIsDirectionsMode(true);
+    setSelectedPlace(null); // Đóng panel chi tiết
+  }, [setIsDirectionsMode]);
 
   const handleRouteSelected = useCallback(async (origin, destination, mode = 'driving') => {
     if (!map.current) return;
@@ -518,7 +539,13 @@ const MapLibreView = ({ mapRef, isDirectionsMode, setIsDirectionsMode, isNavigat
         )}
       </AnimatePresence>
       <AnimatePresence>
-        {selectedPlace && <PlaceDetailPanel place={selectedPlace} onClose={() => setSelectedPlace(null)} />}
+        {selectedPlace && (
+          <PlaceDetailPanel 
+            place={selectedPlace} 
+            onClose={() => setSelectedPlace(null)} 
+            onStartDirections={handleStartDirectionsFromPanel}
+          />
+        )}
       </AnimatePresence>
       <MapStatusOverlays isLoaded={isLoaded} mapError={mapError} isDetailLoading={isDetailLoading} />
       <div className="absolute bottom-10 right-10 z-20 flex flex-col gap-3 items-end">

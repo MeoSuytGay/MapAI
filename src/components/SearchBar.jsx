@@ -3,7 +3,7 @@ import { Search, MapPin, X, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '../hooks/useToast';
-import { searchNominatim } from '../services/osmService';
+import { searchLocations } from '../services/mapServices';
 
 const SearchBar = () => {
   const [query, setQuery] = useState('');
@@ -32,7 +32,7 @@ const SearchBar = () => {
 
     setIsLoading(true);
     try {
-      const data = await searchNominatim(text);
+      const data = await searchLocations(text);
       setResults(data);
       setShowResults(true);
     } catch (_error) {

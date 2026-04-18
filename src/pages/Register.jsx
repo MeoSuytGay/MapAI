@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../hooks/useAuth";
-import { useToast } from "../context/ToastContext";
+import { useToast } from "../hooks/useToast";
 import { validateEmail, validateName, validatePassword } from "../utils/validators";
 import { 
   Mail, 
@@ -18,6 +18,7 @@ export default function Register() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [phoneNumber] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
@@ -52,9 +53,17 @@ export default function Register() {
     }
 
     try {
-      await register(name, email, password);
-      addToast("Khởi tạo tài khoản thành công!", "success");
-      navigate("/");
+      const userData = {
+        fullName: name,
+        email,
+        password,
+        phoneNumber,
+        dateOfBirth: new Date().toISOString(), // Mock, trong thực tế nên có input date
+        role: 0 // 0: User
+      };
+      await register(userData);
+      addToast("Khởi tạo tài khoản thành công! Vui lòng kiểm tra email để kích hoạt.", "success");
+      navigate("/login");
     } catch (err) {
       const msg = err.message || "Đã có lỗi xảy ra khi đăng ký.";
       setError(msg);

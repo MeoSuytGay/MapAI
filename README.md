@@ -1,6 +1,6 @@
 # MapAI - Trải Nghiệm Bản Đồ Thông Minh Thế Hệ Mới
 
-Chào mừng bạn đến với **MapAI**, ứng dụng bản đồ đột phá kết hợp giữa công nghệ bản đồ 3D hiện đại và trí tuệ nhân tạo (AI). Dự án cung cấp một công cụ khám phá thành phố (đặc biệt là Đà Nẵng) không chỉ chính xác mà còn đầy cảm hứng.
+Chào mừng bạn đến với **MapAI** — trải nghiệm bản đồ thông minh kết hợp giữa thế giới 3D sống động và khả năng hỗ trợ bằng AI. Với MapAI, việc khám phá thành phố, đặc biệt là Đà Nẵng, trở nên dễ dàng, chính xác và đầy cảm hứng hơn.
 
 ---
 

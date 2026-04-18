@@ -20,6 +20,7 @@ export const getAllLocations = async () => {
     
     // Mapping dữ liệu từ Backend sang format FE đang dùng
     return data.map(loc => ({
+      ...loc, // Keep original fields for admin/detail use
       id: loc.id,
       name: loc.title,
       address: loc.address,
@@ -28,10 +29,11 @@ export const getAllLocations = async () => {
       image: loc.thumbnail,
       rating: loc.rating,
       type: loc.category,
+      phone: loc.phoneNumber,
       tags: typeof loc.tags === 'string' 
         ? loc.tags.replace(/[{}]/g, '').split(',') 
         : (Array.isArray(loc.tags) ? loc.tags : []),
-      distance: "Đang tính...", // Sẽ tính toán dựa trên vị trí người dùng nếu cần
+      distance: "Đang tính...",
       isFeatured: loc.rating >= 4.7
     }));
   } catch (error) {

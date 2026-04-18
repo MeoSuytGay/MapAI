@@ -13,7 +13,8 @@ import {
   MapIcon, 
   ChevronDown,
   LogOut,
-  User
+  User,
+  ShieldCheck
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -27,6 +28,13 @@ const Header = () => {
     navigate("/login")
     setShowUserMenu(false)
   }
+
+  const getRoleLabel = (role) => {
+    if (role === 'Admin' || role == 0) return 'Admin';
+    return 'User';
+  };
+
+  const isAdmin = user?.role === 'Admin' || user?.role == 0;
 
   return (
     <motion.header 
@@ -114,8 +122,8 @@ const Header = () => {
                 className="flex items-center gap-3 pl-3 pr-1 py-1 bg-white/5 hover:bg-white/10 border border-white/10 rounded-full transition-all group"
               >
                 <div className="flex flex-col items-end hidden sm:flex">
-                  <span className="text-[10px] font-black text-white leading-none">{user.name}</span>
-                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-wider">{user.role}</span>
+                  <span className="text-[10px] font-black text-white leading-none">{user.fullName || user.name}</span>
+                  <span className="text-[8px] font-bold text-slate-500 uppercase tracking-wider">{getRoleLabel(user.role)}</span>
                 </div>
                 <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center border border-white/20 shadow-lg group-hover:scale-105 transition-transform">
                   <User size={14} className="text-white" />
@@ -131,9 +139,19 @@ const Header = () => {
                     className="absolute right-0 mt-3 w-48 bg-slate-900 border border-white/10 rounded-2xl shadow-2xl py-2 z-50 overflow-hidden backdrop-blur-xl"
                   >
                     <div className="px-4 py-3 border-b border-white/5 sm:hidden">
-                      <p className="text-[12px] font-black text-white">{user.name}</p>
+                      <p className="text-[12px] font-black text-white">{user.fullName || user.name}</p>
                       <p className="text-[10px] text-slate-500">{user.email}</p>
                     </div>
+
+                    {isAdmin && (
+                      <button 
+                        onClick={() => { navigate("/admin/dashboard"); setShowUserMenu(false); }}
+                        className="w-full px-4 py-2.5 text-left text-[12px] font-black text-blue-400 hover:bg-blue-400/10 flex items-center gap-2.5 transition-colors"
+                      >
+                        <ShieldCheck size={14} /> Dashboard Admin
+                      </button>
+                    )}
+
                     <button 
                       onClick={() => { navigate("/profile"); setShowUserMenu(false); }}
                       className="w-full px-4 py-2.5 text-left text-[12px] font-bold text-slate-300 hover:bg-white/5 hover:text-white flex items-center gap-2.5 transition-colors"

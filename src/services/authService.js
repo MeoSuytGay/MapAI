@@ -101,7 +101,10 @@ export const authApi = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data)
     });
-    if (!response.ok) throw new Error('Đặt lại mật khẩu thất bại');
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || 'Đặt lại mật khẩu thất bại');
+    }
     return response;
   }
 };

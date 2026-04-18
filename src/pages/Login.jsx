@@ -37,10 +37,16 @@ export default function Login() {
     setError("");
 
     try {
-      await login(email, password);
+      const userData = await login(email, password);
       addToast("Đăng nhập hệ thống thành công!", "success");
-      // Redirect to the intended page or home
-      navigate(from, { replace: true });
+      
+      // Redirect to admin dashboard if role is Admin
+      if (userData?.role === 'Admin' || userData?.role == 0) {
+        navigate("/admin/dashboard", { replace: true });
+      } else {
+        // Redirect to the intended page or home
+        navigate(from, { replace: true });
+      }
     } catch (err) {
       const msg = err.message || "Đã có lỗi xảy ra khi đăng nhập.";
       setError(msg);

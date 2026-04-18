@@ -17,6 +17,7 @@ export const AuthProvider = ({ children }) => {
           if (decoded) {
             // Lấy thông tin cơ bản từ /auth/me khi khởi tạo
             const userData = await authApi.getMe();
+            console.log("BE User Data (initAuth):", userData);
             setUser(userData);
           } else {
             clearTokens();
@@ -36,6 +37,7 @@ export const AuthProvider = ({ children }) => {
     await authApi.login({ email, password });
     // Dùng /auth/me ngay sau khi login
     const userData = await authApi.getMe();
+    console.log("BE User Data (login):", userData);
     setUser(userData);
     return userData;
   }, []);
@@ -61,6 +63,7 @@ export const AuthProvider = ({ children }) => {
     const data = await authApi.googleLogin(idToken);
     // Dùng /auth/me ngay sau khi google login
     const userData = await authApi.getMe();
+    console.log("BE User Data (googleLogin):", userData);
     setUser(userData);
     return data;
   }, []);
@@ -69,10 +72,15 @@ export const AuthProvider = ({ children }) => {
     return await authApi.forgotPassword(email);
   }, []);
 
+  const resetPassword = useCallback(async (data) => {
+    return await authApi.resetPassword(data);
+  }, []);
+
   const refreshUser = useCallback(async () => {
     try {
       // /user/infor sẽ được gọi khi vào trang Profile để lấy chi tiết
       const userData = await userApi.getProfile();
+      console.log("BE User Data (refreshUser):", userData);
       setUser(userData);
       return userData;
     } catch (e) {
@@ -90,6 +98,7 @@ export const AuthProvider = ({ children }) => {
         logout,
         googleLogin,
         forgotPassword,
+        resetPassword,
         refreshUser,
         isLoading,
       }}

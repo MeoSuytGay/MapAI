@@ -1,56 +1,71 @@
-# MapAI - React Project Structure
+# MapAI - Trải Nghiệm Bản Đồ Thông Minh Thế Hệ Mới
 
-Dự án này được xây dựng trên nền tảng **React (Vite)** tích hợp **Tailwind CSS v4** và **React Router**. Cấu trúc thư mục được thiết kế theo tiêu chuẩn công nghiệp giúp dễ dàng bảo trì và mở rộng.
-
----
-
-## 🛠 Cấu trúc thư mục dự án
-
-Dưới đây là mô tả chi tiết về các thư mục trong `src/`:
-
-- **`src/assets/`**: Chứa các tệp tĩnh như hình ảnh (PNG, JPG, SVG), icons, và các tệp tài nguyên khác dùng trong ứng dụng.
-- **`src/components/`**: Chứa các Component UI dùng chung cho toàn bộ dự án (ví dụ: Button, Input, Modal, Navbar, Footer). Các component ở đây nên mang tính tái sử dụng cao.
-- **`src/pages/`**: Mỗi tệp trong thư mục này đại diện cho một trang (Route) của ứng dụng. Ví dụ: `Home.jsx`, `About.jsx`, `Dashboard.jsx`.
-- **`src/hooks/`**: Chứa các Custom Hooks của React để tách biệt logic xử lý khỏi giao diện (ví dụ: `useAuth.js`, `useFetch.js`).
-- **`src/context/`**: Quản lý trạng thái toàn cục (Global State) bằng React Context API (ví dụ: `AuthContext.js`, `ThemeContext.js`).
-- **`src/services/`**: Nơi thực hiện các cuộc gọi API (axios/fetch) và xử lý logic kết nối với Back-end hoặc các dịch vụ bên ngoài.
-- **`src/utils/`**: Chứa các hàm hỗ trợ (helper functions), hằng số (constants), và các định dạng dữ liệu dùng chung (ví dụ: `formatDate.js`, `validators.js`).
-- **`src/App.jsx`**: Component gốc, nơi cấu hình Routing chính cho ứng dụng.
-- **`src/main.jsx`**: Điểm khởi đầu của ứng dụng, nơi render React vào DOM và cấu hình các Provider bao quanh (BrowserRouter, Providers).
+Chào mừng bạn đến với **MapAI**, ứng dụng bản đồ đột phá kết hợp giữa công nghệ bản đồ 3D hiện đại và trí tuệ nhân tạo (AI). Dự án cung cấp một công cụ khám phá thành phố (đặc biệt là Đà Nẵng) không chỉ chính xác mà còn đầy cảm hứng.
 
 ---
 
-## 🚀 Công nghệ sử dụng
+## 🚀 Tính Năng Chính
 
-- **React 19**: Thư viện UI hiện đại.
-- **Vite 8**: Công cụ xây dựng (build tool) siêu nhanh cho phát triển front-end.
-- **Tailwind CSS v4**: Framework CSS utility-first mới nhất, tối ưu hiệu suất qua Vite plugin.
-- **React Router 7**: Quản lý điều hướng và định tuyến trong ứng dụng.
+### 1. Bản Đồ Tương Tác 3D (MapLibre GL)
+*   **Hiển thị Vector & Terrain:** Tích hợp dữ liệu địa hình 3D sinh động từ MapTiler.
+*   **Tương tác POV:** Chế độ Focus Mode cho phép dẫn đường góc nhìn thứ nhất với camera tự động xoay.
+*   **Place Details:** Hiển thị thông tin chi tiết địa điểm (ảnh, rating, mô tả) qua giao diện Glassmorphism hiện đại.
+
+### 2. Trợ Lý AI MapAI Assistant (Gemini)
+*   **Hội thoại thông minh:** Trò chuyện trực tiếp để tìm kiếm thông tin du lịch, món ăn, và lịch trình.
+*   **AI Action Parser:** Tự động điều khiển bản đồ (`flyTo`, `drawRoute`) dựa trên yêu cầu của người dùng trong ô chat.
+
+### 3. Hệ Thống Quản Trị Toàn Diện (Admin Center)
+*   **Dashboard Thống kê:** Theo dõi sức khỏe hệ thống, biểu đồ tăng trưởng người dùng và cơ cấu địa điểm.
+*   **Quản lý Người dùng:** Phân quyền (Admin/User), khóa/mở khóa tài khoản và xóa người dùng.
+*   **Quản lý Địa điểm (POI):** Thêm, sửa, xóa các điểm trên bản đồ với tọa độ chính xác và tải ảnh trực tiếp.
+
+### 4. Xác Thực & Bảo Mật
+*   **Google OAuth & Email/Password:** Đăng nhập linh hoạt và an toàn.
+*   **Xác thực Email:** Quy trình đăng ký đi kèm xác nhận email để đảm bảo bảo mật.
+*   **Phân quyền (RBAC):** Bảo vệ các route Admin và User một cách chặt chẽ.
 
 ---
 
-## 💻 Cách chạy dự án
+## 🛠 Công Nghệ Sử Dụng
+
+- **Frontend:** React 19, Vite 8, Tailwind CSS v4.
+- **Bản Đồ:** MapLibre GL, OSRM (Routing), Nominatim (Search).
+- **Trí Tuệ Nhân Tạo:** Gemini AI Assistant.
+- **Backend/Storage:** Tích hợp Supabase cho Authentication, Database và Storage.
+- **Hiệu Ứng:** Framer Motion (Animation), Lucide React (Icons).
+
+---
+
+## 📂 Cấu Trúc Thư Mục
+
+- `src/components/`: Các UI component dùng chung và logic bản đồ.
+- `src/pages/`: Các trang chính (Home, Map, Admin Dashboard, Profile...).
+- `src/services/`: Logic gọi API và xử lý dữ liệu (auth, admin, location, ai).
+- `src/context/`: Quản lý trạng thái toàn cục (Toast, Auth).
+- `src/hooks/`: Custom hooks để tái sử dụng logic.
+
+---
+
+## 💻 Hướng Dẫn Chạy Dự Án
 
 1. **Cài đặt dependencies**:
    ```bash
    npm install
    ```
 
-2. **Chạy dự án ở chế độ Development**:
+2. **Cấu hình môi trường**:
+   Tạo file `.env` dựa trên các biến cần thiết (VITE_API_BASE_URL, VITE_MAPTILER_KEY...).
+
+3. **Chạy Development**:
    ```bash
    npm run dev
    ```
 
-3. **Xây dựng bản Production**:
+4. **Build Production**:
    ```bash
    npm run build
    ```
 
-4. **Kiểm tra lỗi Lint**:
-   ```bash
-   npm run lint
-   ```
-
 ---
-
-Dự án đã được cấu hình sẵn để bạn có thể bắt đầu code ngay lập tức bằng Tailwind CSS và React Router.
+*© 2026 MapAI Team - Khám phá Đà Nẵng theo cách của bạn.*

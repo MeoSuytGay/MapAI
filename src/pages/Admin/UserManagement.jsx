@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { adminApi } from '../../services/adminService';
 import { 
   UserX, 
@@ -106,7 +106,7 @@ const UserManagement = () => {
     action: null
   });
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       const data = await adminApi.getUsers();
@@ -116,11 +116,11 @@ const UserManagement = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [addToast]);
 
   useEffect(() => {
     fetchUsers();
-  }, []);
+  }, [fetchUsers]);
 
   const openConfirmModal = (config) => {
     setModalConfig({ ...config, isOpen: true });

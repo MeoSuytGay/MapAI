@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { 
   MapPin, 
   Plus, 
@@ -133,21 +133,21 @@ const LocationManagement = () => {
     googleMapsUrl: ''
   });
 
-  const fetchLocations = async () => {
+  const fetchLocations = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getAllLocations();
       setLocations(data);
-    } catch (error) {
+    } catch (_error) {
       addToast('Failed to load locations', 'error');
     } finally {
       setLoading(false);
     }
-  };
+  }, [addToast]);
 
   useEffect(() => {
     fetchLocations();
-  }, []);
+  }, [fetchLocations]);
 
   const openConfirmModal = (config) => {
     setConfirmModal({ ...config, isOpen: true });

@@ -35,10 +35,7 @@ const Explore = () => {
     fetchData();
   }, []);
 
-  // Reset page when tab or search changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeTab, searchTerm]);
+
 
   // Xử lý filter
   const filteredLocations = useMemo(() => {
@@ -122,6 +119,7 @@ const Explore = () => {
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
                   setIsSearching(e.target.value.length > 0);
+                  setCurrentPage(1);
                 }}
               />
               {isSearching && (
@@ -150,7 +148,10 @@ const Explore = () => {
               {quickSuggestions.map(tag => (
                 <button 
                   key={tag}
-                  onClick={() => setSearchTerm(tag)}
+                  onClick={() => {
+                    setSearchTerm(tag);
+                    setCurrentPage(1);
+                  }}
                   className="px-4 py-1.5 rounded-full bg-slate-900/50 border border-slate-800 text-sm text-slate-400 hover:text-white hover:border-indigo-500/50 transition-all cursor-pointer"
                 >
                   {tag}
@@ -166,7 +167,10 @@ const Explore = () => {
             {categories.map(cat => (
               <button
                 key={cat.id}
-                onClick={() => setActiveTab(cat.id)}
+                onClick={() => {
+                  setActiveTab(cat.id);
+                  setCurrentPage(1);
+                }}
                 className={`flex items-center gap-2 px-6 py-2.5 rounded-2xl transition-all ${
                   activeTab === cat.id 
                     ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 

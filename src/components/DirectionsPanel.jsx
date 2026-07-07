@@ -101,10 +101,12 @@ const DirectionsPanel = ({
 
   useEffect(() => {
     if (initialOrigin) { setOrigin(initialOrigin); setOriginQuery(initialOrigin.name); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialOrigin?.lng, initialOrigin?.lat, initialOrigin?.name]);
 
   useEffect(() => {
     if (initialDestination) { setDestination(initialDestination); setDestQuery(initialDestination.name); }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialDestination?.lng, initialDestination?.lat, initialDestination?.name]);
 
   useEffect(() => {

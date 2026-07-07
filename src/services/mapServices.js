@@ -106,7 +106,7 @@ export const fetchRoute = async (origin, destination, mode = 'driving') => {
       try {
         const errorData = await clone.json();
         errorMsg = errorData.message || errorMsg;
-      } catch (e) {
+      } catch (_e) {
         const text = await response.text();
         errorMsg = text || errorMsg;
       }

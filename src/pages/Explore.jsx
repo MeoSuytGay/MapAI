@@ -198,7 +198,15 @@ const Explore = () => {
                   className="flex-shrink-0 w-[300px] md:w-[380px] snap-start cursor-pointer group"
                 >
                   <div className="relative aspect-[16/10] rounded-3xl overflow-hidden mb-4">
-                    <img src={loc.image} alt={loc.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                    <img 
+                      src={loc.image} 
+                      alt={loc.name} 
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&q=80&w=800';
+                      }}
+                    />
                     <div className="absolute top-4 right-4 bg-black/40 backdrop-blur-md px-3 py-1 rounded-full flex items-center gap-1 border border-white/10">
                       <Star size={14} className="text-yellow-500 fill-yellow-500" />
                       <span className="text-sm font-bold">{loc.rating}</span>
@@ -238,7 +246,15 @@ const Explore = () => {
                   className="group bg-slate-900/40 border border-slate-800/50 rounded-[2rem] overflow-hidden hover:bg-slate-900/60 hover:border-indigo-500/30 transition-all cursor-pointer flex flex-col"
                 >
                   <div className="relative aspect-video overflow-hidden">
-                    <img src={loc.image} alt={loc.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                    <img 
+                      src={loc.image} 
+                      alt={loc.name} 
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = 'https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&q=80&w=800';
+                      }}
+                    />
                   </div>
                   <div className="p-6 flex-grow flex flex-col">
                     <div className="flex justify-between items-start mb-3">

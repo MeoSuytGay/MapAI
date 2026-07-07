@@ -53,14 +53,18 @@ const PlaceDetailPanel = ({ place, onClose, onStartDirections }) => {
         {/* 3D Header Slider */}
         <div className="relative h-60 shrink-0 overflow-hidden group">
           <AnimatePresence mode="wait">
-            <motion.div 
+            <motion.img 
               key={currentImageIndex}
               initial={{ opacity: 0, scale: 1.2 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.8, ease: "circOut" }}
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${photos[currentImageIndex]})` }}
+              className="absolute inset-0 w-full h-full object-cover"
+              src={photos[currentImageIndex]}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = 'https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&q=80&w=800';
+              }}
             />
           </AnimatePresence>
           

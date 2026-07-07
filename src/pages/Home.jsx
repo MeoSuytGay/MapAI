@@ -1,5 +1,7 @@
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useAuth } from '../hooks/useAuth'
 import { 
   MessageSquare, 
   Compass, 
@@ -29,6 +31,13 @@ const staggerContainer = {
 
 function Home() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+
+  useEffect(() => {
+    if (user?.role === 'Admin' || user?.role == 0) {
+      navigate("/admin/dashboard", { replace: true });
+    }
+  }, [user, navigate]);
 
   return (
     <div className="bg-slate-950 text-slate-200 overflow-x-hidden selection:bg-blue-500/30">

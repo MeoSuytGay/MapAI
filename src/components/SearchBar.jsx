@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Search, MapPin, X, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useToast } from '../context/ToastContext';
+import { useToast } from '../hooks/useToast';
+import { searchLocations } from '../services/mapServices';
 
 const SearchBar = () => {
   const [query, setQuery] = useState('');
@@ -23,37 +24,31 @@ const SearchBar = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const searchLocation = async (text) => {
-    if (!text.trim() || text.length < 3) {
+  const searchLocation = useCallback(async (text) => {
+    if (!text.trim() || text.length < 2) { // Giảm xuống 2 ký tự để nhạy hơn
       setResults([]);
       return;
     }
 
     setIsLoading(true);
     try {
-      // Giới hạn tìm kiếm trong khu vực Đà Nẵng
-      const viewbox = '107.81,16.22,108.49,15.88';
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(text)}&limit=5&addressdetails=1&viewbox=${viewbox}&bounded=1&countrycodes=vn`
-      );
-      if (!response.ok) throw new Error("Lỗi kết nối tìm kiếm.");
-      const data = await response.json();
+      const data = await searchLocations(text);
       setResults(data);
       setShowResults(true);
-    } catch (error) {
-      console.error('Search error:', error);
+    } catch (_error) {
+      console.error('Search error:', _error);
       addToast("Không thể tìm kiếm địa điểm này", "error");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [addToast]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       if (query) searchLocation(query);
-    }, 500);
+    }, 1000);
     return () => clearTimeout(timer);
-  }, [query]);
+  }, [query, searchLocation]);
 
   const handleSelect = (result) => {
     const lat = result.lat;
@@ -110,7 +105,7 @@ const SearchBar = () => {
                   <div className="min-w-0">
                     <p className="text-[12px] font-bold text-white truncate group-hover/item:text-blue-400 transition-colors">{result.display_name}</p>
                     <p className="text-[9px] text-slate-500 mt-0.5 truncate uppercase tracking-tight font-medium">
-                      {result.type.replace('_', ' ')} • {result.address?.suburb || result.address?.city || 'Đà Nẵng'}
+                      {(result.type || 'place').replace('_', ' ')} • {result.address?.suburb || result.address?.city || 'Đà Nẵng'}
                     </p>
                   </div>
                 </button>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MapPin, Navigation, ArrowLeftRight, X, Search, Loader2, ArrowLeft, MoreVertical, Flag, Car, Bike, Footprints, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Power, Clock, CornerUpRight, CornerUpLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -7,7 +7,6 @@ const DirectionsPanel = ({
   onRouteSelected, 
   onStartNavigation,
   onStopNavigation,
-  onMoveCamera,
   onMoveToStep,
   isNavigating,
   initialOrigin = null, 
@@ -98,17 +97,26 @@ const DirectionsPanel = ({
 
   const currentStep = steps[currentStepIndex];
 
+  const lastRequestRef = React.useRef(null);
+
   useEffect(() => {
     if (initialOrigin) { setOrigin(initialOrigin); setOriginQuery(initialOrigin.name); }
-  }, [initialOrigin]);
+  }, [initialOrigin?.lng, initialOrigin?.lat, initialOrigin?.name]);
 
   useEffect(() => {
     if (initialDestination) { setDestination(initialDestination); setDestQuery(initialDestination.name); }
-  }, [initialDestination]);
+  }, [initialDestination?.lng, initialDestination?.lat, initialDestination?.name]);
 
   useEffect(() => {
-    if (origin && destination) onRouteSelected(origin, destination, travelMode);
-  }, [origin, destination, travelMode]);
+    if (!origin || !destination) return;
+
+    // So sánh để tránh gọi lại API khi tọa độ không thay đổi
+    const requestKey = `${origin.lng},${origin.lat}|${destination.lng},${destination.lat}|${travelMode}`;
+    if (lastRequestRef.current === requestKey) return;
+
+    lastRequestRef.current = requestKey;
+    onRouteSelected(origin, destination, travelMode);
+  }, [origin, destination, travelMode, onRouteSelected]);
 
   const searchLocation = async (text, type) => {
     if (!text.trim() || text.length < 3) return;

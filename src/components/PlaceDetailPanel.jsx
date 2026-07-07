@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Star, MapPin, Phone, Globe, Clock, Image as ImageIcon, ExternalLink, ChevronLeft, ChevronRight, MessageSquare } from 'lucide-react';
 
-const PlaceDetailPanel = ({ place, onClose }) => {
+const PlaceDetailPanel = ({ place, onClose, onStartDirections }) => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   
@@ -53,14 +53,18 @@ const PlaceDetailPanel = ({ place, onClose }) => {
         {/* 3D Header Slider */}
         <div className="relative h-60 shrink-0 overflow-hidden group">
           <AnimatePresence mode="wait">
-            <motion.div 
+            <motion.img 
               key={currentImageIndex}
               initial={{ opacity: 0, scale: 1.2 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.8, ease: "circOut" }}
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ backgroundImage: `url(${photos[currentImageIndex]})` }}
+              className="absolute inset-0 w-full h-full object-cover"
+              src={photos[currentImageIndex]}
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = 'https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&q=80&w=800';
+              }}
             />
           </AnimatePresence>
           
@@ -163,6 +167,7 @@ const PlaceDetailPanel = ({ place, onClose }) => {
         <div className="p-8 pt-4 bg-slate-950/80 border-t border-white/10">
           <div className="flex gap-3">
             <motion.button 
+              onClick={() => onStartDirections && onStartDirections(place)}
               whileHover={{ scale: 1.02, y: -2 }}
               whileTap={{ scale: 0.98 }}
               className="flex-[2] py-4 bg-blue-600 text-white font-black rounded-2xl shadow-[0_10px_20px_rgba(59,130,246,0.3)] flex items-center justify-center gap-2 text-[10px] uppercase tracking-widest transition-all hover:bg-blue-500"
